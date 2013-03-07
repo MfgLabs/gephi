@@ -110,8 +110,8 @@ public class JOGLNativesInstaller extends ModuleInstall {
                 public void run() {
                     System.out.println("Loading native libraries");
                     // disable JOGL and GlueGen runtime library loading from elsewhere
-                    com.sun.opengl.impl.NativeLibLoader.disableLoading();
-                    com.sun.gluegen.runtime.NativeLibLoader.disableLoading();
+                    com.jogamp.opengl.impl.NativeLibLoader.disableLoading();
+                    com.jogamp.gluegen.runtime.NativeLibLoader.disableLoading();
                     // Open GlueGen runtime library optimistically. Note that
                     // currently we do not need this on any platform except X11
                     // ones, because JOGL doesn't use the GlueGen NativeLibrary
@@ -123,7 +123,7 @@ public class JOGLNativesInstaller extends ModuleInstall {
                     if (nativeLibInfo.mayNeedDRIHack()) {
                         // Run the DRI hack
                         try {
-                            driHackClass = Class.forName("com.sun.opengl.impl.x11.DRIHack");
+                            driHackClass = Class.forName("com.jogamp.opengl.impl.x11.DRIHack");
                             driHackClass.getMethod("begin", new Class[]{}).invoke(null, new Object[]{});
                         } catch (Exception e) {
                             e.printStackTrace();
