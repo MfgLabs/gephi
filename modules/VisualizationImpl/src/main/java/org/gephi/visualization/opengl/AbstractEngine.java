@@ -45,7 +45,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import org.gephi.visualization.apiimpl.ModelImpl;
 
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.glu.GLU;
 import org.gephi.graph.api.Model;
 import org.gephi.graph.api.Renderable;
@@ -137,17 +137,17 @@ public abstract class AbstractEngine implements Engine, VizArchitecture {
         });
     }
 
-    public abstract void beforeDisplay(GL gl, GLU glu);
+    public abstract void beforeDisplay(GL2 gl, GLU glu);
 
-    public abstract void display(GL gl, GLU glu);
+    public abstract void display(GL2 gl, GLU glu);
 
-    public abstract void afterDisplay(GL gl, GLU glu);
+    public abstract void afterDisplay(GL2 gl, GLU glu);
 
-    public abstract void initEngine(GL gl, GLU glu);
+    public abstract void initEngine(GL2 gl, GLU glu);
 
-    public abstract void initScreenshot(GL gl, GLU glu);
+    public abstract void initScreenshot(GL2 gl, GLU glu);
 
-    public abstract void cameraHasBeenMoved(GL gl, GLU glu);
+    public abstract void cameraHasBeenMoved(GL2 gl, GLU glu);
 
     public abstract void mouseMove();
 
