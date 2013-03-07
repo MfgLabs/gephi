@@ -41,7 +41,7 @@ Portions Copyrighted 2011 Gephi Consortium.
 */
 package org.gephi.visualization.opengl.compatibility.objects;
 
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.glu.GLU;
 import org.gephi.graph.api.NodeData;
 import org.gephi.visualization.VizController;
@@ -66,7 +66,7 @@ public class SelfLoop3dModel extends SelfLoop2dModel {
     }
 
     @Override
-    public void display(GL gl, GLU glu, VizModel vizModel) {
+    public void display(GL2 gl, GLU glu, VizModel vizModel) {
         gl.glEnd();
 
         //Edge weight
@@ -231,15 +231,15 @@ public class SelfLoop3dModel extends SelfLoop2dModel {
         }
 
         //Display
-        gl.glMap2f(GL.GL_MAP2_VERTEX_3, 0, 1, 3, 4, 0, 1, 12, 2, buffer);       //Map evaluators
-        gl.glEnable(GL.GL_MAP2_VERTEX_3);
+        gl.glMap2f(GL2.GL_MAP2_VERTEX_3, 0, 1, 3, 4, 0, 1, 12, 2, buffer);       //Map evaluators
+        gl.glEnable(GL2.GL_MAP2_VERTEX_3);
         gl.glMapGrid2f(segments, 0, 1, 1, 0, 1);     //Grid
-        gl.glEvalMesh2(GL.GL_FILL, 0, segments, 0, 1);      //Display
-        gl.glDisable(GL.GL_MAP2_VERTEX_3);
+        gl.glEvalMesh2(GL2.GL_FILL, 0, segments, 0, 1);      //Display
+        gl.glDisable(GL2.GL_MAP2_VERTEX_3);
 
         gl.glEnd();
 
-        gl.glBegin(GL.GL_TRIANGLES);
+        gl.glBegin(GL2.GL_TRIANGLES);
 
     }
 }

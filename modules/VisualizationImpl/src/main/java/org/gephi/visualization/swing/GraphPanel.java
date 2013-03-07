@@ -46,8 +46,8 @@ import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.text.NumberFormat;
+import javax.media.opengl.awt.GLJPanel;
 
-import javax.media.opengl.GLJPanel;
 import org.gephi.visualization.GraphLimits;
 import org.gephi.visualization.VizController;
 
@@ -68,7 +68,7 @@ public class GraphPanel extends GraphDrawableImpl {
         //Init GLJPanel as the drawable
         gljPanel = new GLJPanel(getCaps(), null, null) {
 
-            @Override
+            //@Override
             public void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g;
                 render2DBackground(g2d);

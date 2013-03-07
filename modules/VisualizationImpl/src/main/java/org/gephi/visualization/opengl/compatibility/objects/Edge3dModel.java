@@ -41,7 +41,7 @@ Portions Copyrighted 2011 Gephi Consortium.
 */
 package org.gephi.visualization.opengl.compatibility.objects;
 
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.glu.GLU;
 import org.gephi.graph.api.MetaEdge;
 import org.gephi.graph.api.NodeData;
@@ -64,7 +64,7 @@ public class Edge3dModel extends Edge2dModel {
     }
 
     @Override
-    public void display(GL gl, GLU glu, VizModel vizModel) {
+    public void display(GL2 gl, GLU glu, VizModel vizModel) {
         if (this.arrow != null) {
             this.arrow.setSelected(selected);
         }

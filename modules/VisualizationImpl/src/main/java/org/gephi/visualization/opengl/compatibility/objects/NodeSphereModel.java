@@ -41,7 +41,7 @@ Portions Copyrighted 2011 Gephi Consortium.
 */
 package org.gephi.visualization.opengl.compatibility.objects;
 
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.glu.GLU;
 import org.gephi.graph.api.NodeData;
 import org.gephi.visualization.VizModel;
@@ -94,7 +94,7 @@ public class NodeSphereModel extends ModelImpl<NodeData> {
     }
 
     @Override
-    public void display(GL gl, GLU glu, VizModel model) {
+    public void display(GL2 gl, GLU glu, VizModel model) {
         boolean selec = selected;
         boolean neighbor = false;
         highlight = false;

@@ -42,9 +42,10 @@ Portions Copyrighted 2011 Gephi Consortium.
 package org.gephi.visualization.screenshot;
 
 import org.gephi.visualization.opengl.*;
-import com.sun.opengl.util.FileUtil;
-import com.sun.opengl.util.ImageUtil;
-import com.sun.opengl.util.TileRenderer;
+
+import com.jogamp.opengl.util.awt.ImageUtil;
+import com.jogamp.opengl.util.gl2.TileRenderer;
+
 import java.awt.Cursor;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
@@ -55,12 +56,19 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import javax.imageio.ImageIO;
-import javax.media.opengl.GL;
+
+import javax.media.nativewindow.AbstractGraphicsDevice;	
+import javax.media.opengl.GL2;
+import javax.media.opengl.GLCapabilities;
+import javax.media.opengl.GLDrawableFactory;	
+import javax.media.opengl.GLProfile;
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLCapabilities;
 import javax.media.opengl.GLContext;
 import javax.media.opengl.GLDrawableFactory;
 import javax.media.opengl.GLPbuffer;
+
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -133,6 +141,19 @@ public class ScreenshotMaker implements VizArchitecture {
         takeTicket = true;
     }
 
+    private static String getExtension(File f) {
+        String ext = null;
+        String s = f.getName();
+        int i = s.lastIndexOf('.');
+
+        if (i > 0 && i < s.length() - 1)
+        ext = s.substring(i+1).toLowerCase();
+
+        if(ext == null)
+        return "";
+        return ext;
+    }
+    
     private void take(File file) throws Exception {
 
         //System.out.println("Take Screenshot to " + file.getName());
@@ -142,9 +163,12 @@ public class ScreenshotMaker implements VizArchitecture {
         int tileHeight = height / 12;
         int imageWidth = width;
         int imageHeight = height;
-
+	
+        GLProfile profile = GLProfile.get(GLProfile.GL2);
+        GLCapabilities caps = new GLCapabilities(profile); 
+        AbstractGraphicsDevice device = GLDrawableFactory.getFactory(profile).getDefaultDevice();
         //Caps
-        GLCapabilities caps = new GLCapabilities();
+
         caps.setAlphaBits(8);
         caps.setDoubleBuffered(false);
         caps.setHardwareAccelerated(true);
@@ -152,7 +176,8 @@ public class ScreenshotMaker implements VizArchitecture {
         caps.setNumSamples(antiAliasing);
 
         //Buffer
-        GLPbuffer pbuffer = GLDrawableFactory.getFactory().createGLPbuffer(caps, null, tileWidth, tileHeight, null);
+
+        GLPbuffer pbuffer = GLDrawableFactory.getFactory(profile).createGLPbuffer(device, caps, null, tileWidth, tileHeight, null);
         BufferedImage image = null;
         if (transparentBackground) {
             image = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_4BYTE_ABGR);
@@ -166,9 +191,9 @@ public class ScreenshotMaker implements VizArchitecture {
         tileRenderer.setTileSize(tileWidth, tileHeight, 0);
         tileRenderer.setImageSize(imageWidth, imageHeight);
         if (transparentBackground) {
-            tileRenderer.setImageBuffer(GL.GL_BGRA, GL.GL_UNSIGNED_BYTE, imageBuffer);
+            tileRenderer.setImageBuffer(GL2.GL_BGRA, GL2.GL_UNSIGNED_BYTE, imageBuffer);
         } else {
-            tileRenderer.setImageBuffer(GL.GL_BGR, GL.GL_UNSIGNED_BYTE, imageBuffer);
+            tileRenderer.setImageBuffer(GL2.GL_BGR, GL2.GL_UNSIGNED_BYTE, imageBuffer);
         }
         tileRenderer.trPerspective(drawable.viewField, (float) imageWidth / (float) imageHeight, drawable.nearDistance, drawable.farDistance);
 
@@ -178,14 +203,18 @@ public class ScreenshotMaker implements VizArchitecture {
         if (context.makeCurrent() == GLContext.CONTEXT_NOT_CURRENT) {
             throw new RuntimeException("Error making pbuffer's context current");
         }
-        GL gl = pbuffer.getGL();
-        gl.glMatrixMode(GL.GL_MODELVIEW);
+        
+        System.out.println("Disabling snapshot");
+
+        GL2 gl = pbuffer.getGL().getGL2();
+        gl.glMatrixMode(GL2.GL_MODELVIEW);
         gl.glLoadIdentity();
 
         //Init
         drawable.initConfig(gl);
         vizConfig.setDisableLOD(true);
         engine.initScreenshot(gl, GLAbstractListener.glu);
+        
 
         //Textrender - swap to 3D
         textManager.setRenderer3d(true);
@@ -199,6 +228,7 @@ public class ScreenshotMaker implements VizArchitecture {
         //Clean
         context.release();
         pbuffer.destroy();
+ 
 
         //Textrender - back to 2D
         textManager.setRenderer3d(false);
@@ -256,7 +286,7 @@ public class ScreenshotMaker implements VizArchitecture {
         }
         String format = "png";
         if (file != null) {
-            format = FileUtil.getFileSuffix(file);
+            format = getExtension(file);
         }
         if (!ImageIO.write(image, format, file)) {
             throw new IOException("Unsupported file format");

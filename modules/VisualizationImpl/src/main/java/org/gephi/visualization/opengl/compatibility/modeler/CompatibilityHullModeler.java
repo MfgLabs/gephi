@@ -41,7 +41,7 @@ Portions Copyrighted 2011 Gephi Consortium.
 */
 package org.gephi.visualization.opengl.compatibility.modeler;
 
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
 import javax.swing.JPanel;
@@ -67,7 +67,7 @@ public class CompatibilityHullModeler implements CompatibilityModeler<ConvexHull
         return hull;
     }
 
-    public int initDisplayLists(GL gl, GLU glu, GLUquadric quadric, int ptr) {
+    public int initDisplayLists(GL2 gl, GLU glu, GLUquadric quadric, int ptr) {
         return ptr;
     }
 
@@ -79,10 +79,10 @@ public class CompatibilityHullModeler implements CompatibilityModeler<ConvexHull
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    public void beforeDisplay(GL gl, GLU glu) {
+    public void beforeDisplay(GL2 gl, GLU glu) {
     }
 
-    public void afterDisplay(GL gl, GLU glu) {
+    public void afterDisplay(GL2 gl, GLU glu) {
     }
 
     public String getName() {

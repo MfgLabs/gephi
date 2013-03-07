@@ -42,7 +42,7 @@ Portions Copyrighted 2011 Gephi Consortium.
 package org.gephi.visualization.opengl.text;
 
 import org.gephi.visualization.impl.TextDataImpl;
-import com.sun.opengl.util.j2d.TextRenderer;
+import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;

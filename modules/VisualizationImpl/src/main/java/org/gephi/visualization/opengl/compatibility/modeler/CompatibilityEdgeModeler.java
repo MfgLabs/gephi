@@ -42,7 +42,7 @@ Portions Copyrighted 2011 Gephi Consortium.
 package org.gephi.visualization.opengl.compatibility.modeler;
 
 import org.gephi.visualization.api.initializer.CompatibilityModeler;
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
 import javax.swing.JPanel;
@@ -91,11 +91,11 @@ public class CompatibilityEdgeModeler implements CompatibilityModeler<EdgeData> 
         return edge;
     }
 
-    public void beforeDisplay(GL gl, GLU glu) {
-        gl.glBegin(GL.GL_TRIANGLES);
+    public void beforeDisplay(GL2 gl, GLU glu) {
+        gl.glBegin(GL2.GL_TRIANGLES);
     }
 
-    public void afterDisplay(GL gl, GLU glu) {
+    public void afterDisplay(GL2 gl, GLU glu) {
         gl.glEnd();
     }
 
@@ -103,7 +103,7 @@ public class CompatibilityEdgeModeler implements CompatibilityModeler<EdgeData> 
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    public int initDisplayLists(GL gl, GLU glu, GLUquadric quadric, int ptr) {
+    public int initDisplayLists(GL2 gl, GLU glu, GLUquadric quadric, int ptr) {
         return ptr;
     }
 

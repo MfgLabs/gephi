@@ -41,15 +41,16 @@ Portions Copyrighted 2011 Gephi Consortium.
 */
 package org.gephi.visualization.swing;
 
-import com.sun.opengl.util.BufferUtil;
+import com.jogamp.common.nio.Buffers;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
 import org.gephi.visualization.VizArchitecture;
@@ -139,11 +140,12 @@ public class GraphDrawableImpl extends GLAbstractListener implements VizArchitec
     }
 
     @Override
-    protected void init(GL gl) {
+    protected void init(GL2 gl) {
         //System.out.println("init");
         graphComponent.setCursor(Cursor.getDefaultCursor());
         engine.initEngine(gl, glu);
     }
+    
     
     public void destroy() {
         if(graphMouseAdapter != null) {
@@ -174,33 +176,33 @@ public class GraphDrawableImpl extends GLAbstractListener implements VizArchitec
     }
 
     @Override
-    public void setCameraPosition(GL gl, GLU glu) {
+    public void setCameraPosition(GL2 gl, GLU glu) {
 
         //Refresh rotation angle
         gl.glLoadIdentity();
         glu.gluLookAt(cameraLocation[0], cameraLocation[1], cameraLocation[2], cameraTarget[0], cameraTarget[1], cameraTarget[2], 0, 1, 0);
-        gl.glGetDoublev(GL.GL_MODELVIEW_MATRIX, modelMatrix);
+        gl.glGetDoublev(GL2.GL_MODELVIEW_MATRIX, modelMatrix);
         cameraVector.set(cameraTarget[0] - cameraLocation[0], cameraTarget[1] - cameraLocation[1], cameraTarget[2] - cameraLocation[2]);
         refreshDraggingMarker();
     }
 
     @Override
-    protected void reshape3DScene(GL gl) {
+    protected void reshape3DScene(GL2 gl) {
         setCameraPosition(gl, glu);
         graphComponent.invalidate();    //Force canvas to be laid out with the proper size
     }
 
     @Override
-    protected void render3DScene(GL gl, GLU glu) {
+    protected void render3DScene(GL2 gl, GLU glu) {
 
         scheduler.display(gl, glu);
         //renderTestCube(gl);
     }
 
-    private void renderTestCube(GL gl) {
+    private void renderTestCube(GL2 gl) {
         float cubeSize = 100f;
 
-        gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
+        gl.glClear(GL2.GL_COLOR_BUFFER_BIT | GL2.GL_DEPTH_BUFFER_BIT);
         gl.glLoadIdentity();
         glu.gluLookAt(cameraLocation[0], cameraLocation[1], cameraLocation[2], cameraTarget[0], cameraTarget[1], cameraTarget[2], 0, 1, 0);
 
@@ -209,7 +211,7 @@ public class GraphDrawableImpl extends GLAbstractListener implements VizArchitec
         gl.glRotatef(15.0f, 0.0f, 1.0f, 0.0f);	// Rotate The cube around the Y axis
         gl.glRotatef(15.0f, 1.0f, 1.0f, 1.0f);
 
-        gl.glBegin(GL.GL_QUADS);		// Draw The Cube Using quads
+        gl.glBegin(GL2.GL_QUADS);		// Draw The Cube Using quads
         gl.glColor3f(0.0f, 1.0f, 0.0f);	// Color Blue
         gl.glVertex3f(cubeSize, cubeSize, -cubeSize);	// Top Right Of The Quad (Top)
         gl.glVertex3f(-cubeSize, cubeSize, -cubeSize);	// Top Left Of The Quad (Top)
@@ -244,11 +246,11 @@ public class GraphDrawableImpl extends GLAbstractListener implements VizArchitec
     }
 
     public void renderScreenshot(GLAutoDrawable drawable) {
-        GL gl = drawable.getGL();
+        GL2 gl = drawable.getGL().getGL2();
         if (vizController.getVizModel().isUse3d()) {
-            gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
+            gl.glClear(GL2.GL_COLOR_BUFFER_BIT | GL2.GL_DEPTH_BUFFER_BIT);
         } else {
-            gl.glClear(GL.GL_COLOR_BUFFER_BIT);
+            gl.glClear(GL2.GL_COLOR_BUFFER_BIT);
         }
         setCameraPosition(gl, glu);
         engine.display(gl, glu);
@@ -291,11 +293,26 @@ public class GraphDrawableImpl extends GLAbstractListener implements VizArchitec
 
         return out;
     }
-
+    private float[] toFloatArray(double[] arr) {
+      if (arr == null) return null;
+      int n = arr.length;
+      float[] ret = new float[n];
+      for (int i = 0; i < n; i++) {
+        ret[i] = (float)arr[i];
+      }
+      return ret;
+    }
     public double[] gluUnProject(float x, float y, float z) {
-        DoubleBuffer buffer = BufferUtil.newDoubleBuffer(3);
-        glu.gluUnProject(x, y, z, modelMatrix, projMatrix, viewport, buffer);
-        return new double[]{buffer.get(0), buffer.get(1), buffer.get(2)};
+        FloatBuffer buffer = Buffers.newDirectFloatBuffer(3);
+
+        /* FIXME jbilcke: not sure about this whole double-to-float-to-double thing */
+        FloatBuffer modelMatrixBuffer = Buffers.newDirectFloatBuffer(modelMatrix.capacity());
+        modelMatrixBuffer.put(toFloatArray(modelMatrix.array()));
+        FloatBuffer projMatrixBuffer = Buffers.newDirectFloatBuffer(projMatrix.capacity());
+        projMatrixBuffer.put(toFloatArray(projMatrix.array()));
+        glu.gluProject(x, y, z, modelMatrixBuffer, projMatrixBuffer, viewport, buffer);
+
+        return new double[]{(double)buffer.get(0), (double)buffer.get(1), (double)buffer.get(2)};
     }
 
     public float[] getCameraLocation() {
@@ -348,5 +365,10 @@ public class GraphDrawableImpl extends GLAbstractListener implements VizArchitec
 
     public IntBuffer getViewport() {
         return viewport;
+    }
+
+    @Override
+    public void dispose(GLAutoDrawable glad) {
+        /* FIXME: jbilcke: what should it do? is it new in JOGL2? */
     }
 }

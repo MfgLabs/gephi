@@ -41,7 +41,7 @@ Portions Copyrighted 2011 Gephi Consortium.
 */
 package org.gephi.visualization.opengl.compatibility.modeler;
 
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
 import javax.swing.JPanel;
@@ -75,33 +75,33 @@ public class CompatibilityPotatoModeler implements CompatibilityModeler<NodeData
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    public int initDisplayLists(GL gl, GLU glu, GLUquadric quadric, int ptr) {
+    public int initDisplayLists(GL2 gl, GLU glu, GLUquadric quadric, int ptr) {
 
         //Low res disk
         DISK_LOW = ptr + 1;
-        gl.glNewList(DISK_LOW, GL.GL_COMPILE);
-        gl.glDisable(GL.GL_LIGHTING);
+        gl.glNewList(DISK_LOW, GL2.GL_COMPILE);
+        gl.glDisable(GL2.GL_LIGHTING);
         glu.gluDisk(quadric, 0.0, 1.0, 8, 1);
-        gl.glEnable(GL.GL_LIGHTING);
+        gl.glEnable(GL2.GL_LIGHTING);
         gl.glEndList();
         //End
 
         //High res disk
         DISK_HIGH = DISK_LOW + 1;
-        gl.glNewList(DISK_HIGH, GL.GL_COMPILE);
-        gl.glDisable(GL.GL_LIGHTING);
+        gl.glNewList(DISK_HIGH, GL2.GL_COMPILE);
+        gl.glDisable(GL2.GL_LIGHTING);
         glu.gluDisk(quadric, 0.0, 1.0, 32, 2);
-        gl.glEnable(GL.GL_LIGHTING);
+        gl.glEnable(GL2.GL_LIGHTING);
         gl.glEndList();
         //End
 
         return DISK_HIGH;
     }
 
-    public void beforeDisplay(GL gl, GLU glu) {
+    public void beforeDisplay(GL2 gl, GLU glu) {
     }
 
-    public void afterDisplay(GL gl, GLU glu) {
+    public void afterDisplay(GL2 gl, GLU glu) {
     }
 
     public void initFromOpenGLThread() {

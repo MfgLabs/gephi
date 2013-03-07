@@ -41,14 +41,14 @@ Portions Copyrighted 2011 Gephi Consortium.
 */
 package org.gephi.visualization.swing;
 
-import com.sun.opengl.util.GLUT;
+import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Component;
 
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.text.NumberFormat;
-import javax.media.opengl.GL;
-import javax.media.opengl.GLCanvas;
+import javax.media.opengl.GL2;
+import javax.media.opengl.awt.GLCanvas;
 import javax.media.opengl.glu.GLU;
 import javax.swing.JPopupMenu;
 import javax.swing.ToolTipManager;
@@ -81,7 +81,7 @@ public class GraphCanvas extends GraphDrawableImpl {
     }
 
     @Override
-    protected void render3DScene(GL gl, GLU glu) {
+    protected void render3DScene(GL2 gl, GLU glu) {
         if (vizController.getVizConfig().isShowFPS()) {
             gl.glPushMatrix();
             gl.glLoadIdentity();

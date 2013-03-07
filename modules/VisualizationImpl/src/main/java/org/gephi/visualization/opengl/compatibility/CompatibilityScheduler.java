@@ -49,7 +49,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.glu.GLU;
 import org.gephi.visualization.VizArchitecture;
 import org.gephi.visualization.VizController;
@@ -79,7 +79,7 @@ public class CompatibilityScheduler implements Scheduler, VizArchitecture {
     private CompatibilityEngine engine;
     private VizConfig vizConfig;
     //Current GL
-    private GL gl;
+    private GL2 gl;
     private GLU glu;
     //Animator
     private SimpleFPSAnimator simpleFPSAnimator;
@@ -229,7 +229,7 @@ public class CompatibilityScheduler implements Scheduler, VizArchitecture {
     }
 
     @Override
-    public void display(GL gl, GLU glu) {
+    public void display(GL2 gl, GLU glu) {
         if (simpleFPSAnimator.isDisplayCall()) {
             this.gl = gl;
             this.glu = glu;

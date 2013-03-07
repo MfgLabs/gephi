@@ -41,7 +41,7 @@ Portions Copyrighted 2011 Gephi Consortium.
 */
 package org.gephi.visualization.opengl.compatibility.objects;
 
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.glu.GLU;
 import org.gephi.utils.collection.avl.AVLItemAccessor;
 import org.gephi.utils.collection.avl.ParamAVLTree;
@@ -93,7 +93,7 @@ public class Potato3dModel extends ModelImpl<NodeData> {
     }
 
     @Override
-    public void display(GL gl, GLU glu, VizModel model) {
+    public void display(GL2 gl, GLU glu, VizModel model) {
         /*if (mark) {
         this.display = obj.getDisplay();
         }

@@ -41,7 +41,7 @@ Portions Copyrighted 2011 Gephi Consortium.
 */
 package org.gephi.visualization.api.selection;
 
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.glu.GLU;
 import org.gephi.graph.api.Renderable;
 import org.gephi.visualization.apiimpl.ModelImpl;
@@ -63,7 +63,7 @@ public interface SelectionArea {
 
     public abstract boolean unselect(Renderable object);
 
-    public void drawArea(GL gl, GLU glu);
+    public void drawArea(GL2 gl, GLU glu);
 
     public boolean isEnabled();
 

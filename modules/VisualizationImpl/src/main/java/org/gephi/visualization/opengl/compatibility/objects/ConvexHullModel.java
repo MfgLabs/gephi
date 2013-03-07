@@ -41,7 +41,7 @@ Portions Copyrighted 2011 Gephi Consortium.
  */
 package org.gephi.visualization.opengl.compatibility.objects;
 
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.glu.GLU;
 import org.gephi.graph.api.Node;
 import org.gephi.visualization.VizModel;
@@ -82,7 +82,7 @@ public class ConvexHullModel extends ModelImpl<ConvexHull> {
     }
 
     @Override
-    public void display(GL gl, GLU glu, VizModel model) {
+    public void display(GL2 gl, GLU glu, VizModel model) {
         if (requestUpdate) {
             requestUpdate = false;
             obj.recompute();
@@ -115,7 +115,7 @@ public class ConvexHullModel extends ModelImpl<ConvexHull> {
         }
 
 
-        gl.glBegin(GL.GL_POLYGON);
+        gl.glBegin(GL2.GL_POLYGON);
         ModelImpl[] nodes = obj.getNodes();
         for (int i = 0; i < nodes.length; i++) {
             ModelImpl node = nodes[i];
@@ -125,7 +125,7 @@ public class ConvexHullModel extends ModelImpl<ConvexHull> {
 
         //Line
         gl.glColor4f(r, g, b, 0.8f);
-        gl.glBegin(GL.GL_LINE_LOOP);
+        gl.glBegin(GL2.GL_LINE_LOOP);
         for (int i = 0; i < nodes.length; i++) {
             ModelImpl node = nodes[i];
             gl.glVertex3f(node.getObj().x() - centroidX, node.getObj().y() - centroidY, node.getObj().z());

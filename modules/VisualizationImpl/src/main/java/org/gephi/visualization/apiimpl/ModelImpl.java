@@ -41,7 +41,7 @@ Portions Copyrighted 2011 Gephi Consortium.
  */
 package org.gephi.visualization.apiimpl;
 
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.glu.GLU;
 import org.gephi.utils.collection.avl.AVLItemAccessor;
 import org.gephi.utils.collection.avl.ParamAVLTree;
@@ -81,7 +81,7 @@ public abstract class ModelImpl<ObjectType extends Renderable> implements Model,
 
     public abstract boolean isInOctreeLeaf(Octant leaf);
 
-    public abstract void display(GL gl, GLU glu, VizModel model);
+    public abstract void display(GL2 gl, GLU glu, VizModel model);
 
     public abstract boolean selectionTest(Vecf distanceFromMouse, float selectionSize);
 

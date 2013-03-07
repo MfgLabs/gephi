@@ -41,13 +41,13 @@ Portions Copyrighted 2011 Gephi Consortium.
 */
 package org.gephi.visualization.opengl.octree;
 
-import com.sun.opengl.util.BufferUtil;
+import com.jogamp.common.nio.Buffers;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.glu.GLU;
 import org.gephi.utils.collection.avl.ResetableIterator;
 import org.gephi.utils.collection.avl.AVLItemAccessor;
@@ -147,28 +147,28 @@ public class Octree implements VizArchitecture {
         }
     }
 
-    public void updateVisibleOctant(GL gl) {
+    public void updateVisibleOctant(GL2 gl) {
         //Limits
         refreshLimits();
 
         //Switch to OpenGL select mode
         int capacity = 1 * 4 * leaves.getCount();      //Each object take in maximium : 4 * name stack depth
-        IntBuffer hitsBuffer = BufferUtil.newIntBuffer(capacity);
+        IntBuffer hitsBuffer = Buffers.newDirectIntBuffer(capacity);
         gl.glSelectBuffer(hitsBuffer.capacity(), hitsBuffer);
-        gl.glRenderMode(GL.GL_SELECT);
+        gl.glRenderMode(GL2.GL_SELECT);
         gl.glInitNames();
         gl.glPushName(0);
-        gl.glDisable(GL.GL_CULL_FACE);      //Disable flags
+        gl.glDisable(GL2.GL_CULL_FACE);      //Disable flags
         //Draw the nodes cube in the select buffer
         for (Octant n : leaves) {
             n.resetUpdatePositionFlag();        //Profit from the loop to do this, because this method is always after updating position
             gl.glLoadName(n.getNumber());
             n.displayOctant(gl);
         }
-        int nbRecords = gl.glRenderMode(GL.GL_RENDER);
+        int nbRecords = gl.glRenderMode(GL2.GL_RENDER);
         if (vizController.getVizModel().isCulling()) {
-            gl.glEnable(GL.GL_CULL_FACE);
-            gl.glCullFace(GL.GL_BACK);
+            gl.glEnable(GL2.GL_CULL_FACE);
+            gl.glCullFace(GL2.GL_BACK);
         }
         visibleLeaves.clear();
 
@@ -194,26 +194,26 @@ public class Octree implements VizArchitecture {
         //System.out.println(minDepth);
     }
 
-    public void updateSelectedOctant(GL gl, GLU glu, float[] mousePosition, float[] pickRectangle) {
+    public void updateSelectedOctant(GL2 gl, GLU glu, float[] mousePosition, float[] pickRectangle) {
         //Start Picking mode
         int capacity = 1 * 4 * visibleLeaves.size();      //Each object take in maximium : 4 * name stack depth
-        IntBuffer hitsBuffer = BufferUtil.newIntBuffer(capacity);
+        IntBuffer hitsBuffer = Buffers.newDirectIntBuffer(capacity);
 
         gl.glSelectBuffer(hitsBuffer.capacity(), hitsBuffer);
-        gl.glRenderMode(GL.GL_SELECT);
-        gl.glDisable(GL.GL_CULL_FACE);      //Disable flags
+        gl.glRenderMode(GL2.GL_SELECT);
+        gl.glDisable(GL2.GL_CULL_FACE);      //Disable flags
 
         gl.glInitNames();
         gl.glPushName(0);
 
-        gl.glMatrixMode(GL.GL_PROJECTION);
+        gl.glMatrixMode(GL2.GL_PROJECTION);
         gl.glPushMatrix();
         gl.glLoadIdentity();
 
         glu.gluPickMatrix(mousePosition[0], mousePosition[1], pickRectangle[0], pickRectangle[1], drawable.getViewport());
         gl.glMultMatrixd(drawable.getProjectionMatrix());
 
-        gl.glMatrixMode(GL.GL_MODELVIEW);
+        gl.glMatrixMode(GL2.GL_MODELVIEW);
 
         //Draw the nodes' cube int the select buffer
         int hitName = 1;
@@ -225,16 +225,16 @@ public class Octree implements VizArchitecture {
         }
 
         //Restoring the original projection matrix
-        gl.glMatrixMode(GL.GL_PROJECTION);
+        gl.glMatrixMode(GL2.GL_PROJECTION);
         gl.glPopMatrix();
-        gl.glMatrixMode(GL.GL_MODELVIEW);
+        gl.glMatrixMode(GL2.GL_MODELVIEW);
         gl.glFlush();
 
         //Returning to normal rendering mode
-        int nbRecords = gl.glRenderMode(GL.GL_RENDER);
+        int nbRecords = gl.glRenderMode(GL2.GL_RENDER);
         if (vizController.getVizModel().isCulling()) {
-            gl.glEnable(GL.GL_CULL_FACE);
-            gl.glCullFace(GL.GL_BACK);
+            gl.glEnable(GL2.GL_CULL_FACE);
+            gl.glCullFace(GL2.GL_BACK);
         }
 
         //Clean previous selection
@@ -318,21 +318,21 @@ public class Octree implements VizArchitecture {
         return res;
     }
 
-    public void displayOctree(GL gl, GLU glu) {
-        gl.glDisable(GL.GL_CULL_FACE);
-        gl.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE);
+    public void displayOctree(GL2 gl, GLU glu) {
+        gl.glDisable(GL2.GL_CULL_FACE);
+        gl.glPolygonMode(GL2.GL_FRONT_AND_BACK, GL2.GL_LINE);
         for (Octant o : visibleLeaves) {
             gl.glColor3f(1, 0.5f, 0.5f);
             o.displayOctant(gl);
             o.displayOctantInfo(gl, glu);
         }
         if (!vizController.getVizConfig().isWireFrame()) {
-            gl.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL);
+            gl.glPolygonMode(GL2.GL_FRONT_AND_BACK, GL2.GL_FILL);
         }
 
         if (vizController.getVizModel().isCulling()) {
-            gl.glEnable(GL.GL_CULL_FACE);
-            gl.glCullFace(GL.GL_BACK);
+            gl.glEnable(GL2.GL_CULL_FACE);
+            gl.glCullFace(GL2.GL_BACK);
         }
     }
 

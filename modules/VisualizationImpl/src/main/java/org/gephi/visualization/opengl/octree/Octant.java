@@ -41,12 +41,13 @@ Portions Copyrighted 2011 Gephi Consortium.
 */
 package org.gephi.visualization.opengl.octree;
 
-import com.sun.opengl.util.GLUT;
+
+import com.jogamp.opengl.util.gl2.GLUT;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.glu.GLU;
 import org.gephi.utils.collection.avl.AVLItemAccessor;
 import org.gephi.utils.collection.avl.ParamAVLTree;
@@ -200,12 +201,12 @@ public class Octant implements AVLItem {
         return modelClasses.get(classID);
     }
 
-    public void displayOctant(GL gl) {
+    public void displayOctant(GL2 gl) {
         /*if(children==null && depth==octree.getMaxDepth() && objectsCount>0)
         {*/
 
         float quantum = size / 2;
-        gl.glBegin(GL.GL_QUAD_STRIP);
+        gl.glBegin(GL2.GL_QUAD_STRIP);
         gl.glVertex3f(posX + quantum, posY + quantum, posZ + quantum);
         gl.glVertex3f(posX + quantum, posY - quantum, posZ + quantum);
         gl.glVertex3f(posX + quantum, posY + quantum, posZ - quantum);
@@ -217,7 +218,7 @@ public class Octant implements AVLItem {
         gl.glVertex3f(posX + quantum, posY + quantum, posZ + quantum);
         gl.glVertex3f(posX + quantum, posY - quantum, posZ + quantum);
         gl.glEnd();
-        gl.glBegin(GL.GL_QUADS);
+        gl.glBegin(GL2.GL_QUADS);
         gl.glVertex3f(posX - quantum, posY + quantum, posZ - quantum);
         gl.glVertex3f(posX - quantum, posY + quantum, posZ + quantum);
         gl.glVertex3f(posX + quantum, posY + quantum, posZ + quantum);
@@ -238,7 +239,7 @@ public class Octant implements AVLItem {
         }*/
     }
 
-    public void displayOctantInfo(GL gl, GLU glu) {
+    public void displayOctantInfo(GL2 gl, GLU glu) {
         GLUT glut = new GLUT();
 
         float quantum = size / 2;
