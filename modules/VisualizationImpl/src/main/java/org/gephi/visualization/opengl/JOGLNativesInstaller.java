@@ -109,9 +109,13 @@ public class JOGLNativesInstaller extends ModuleInstall {
                 @Override
                 public void run() {
                     System.out.println("Loading native libraries");
+                    
                     // disable JOGL and GlueGen runtime library loading from elsewhere
-                    com.jogamp.opengl.impl.NativeLibLoader.disableLoading();
-                    com.jogamp.gluegen.runtime.NativeLibLoader.disableLoading();
+                    // this is not possible with JOGL2?
+         
+                    //com.jogamp.opengl.impl.NativeLibLoader.disableLoading();
+                    //com.jogamp.gluegen.impl.NativeLibLoader.disableLoading();
+                    
                     // Open GlueGen runtime library optimistically. Note that
                     // currently we do not need this on any platform except X11
                     // ones, because JOGL doesn't use the GlueGen NativeLibrary

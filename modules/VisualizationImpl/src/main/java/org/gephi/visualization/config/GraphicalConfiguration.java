@@ -41,8 +41,11 @@ Portions Copyrighted 2011 Gephi Consortium.
 */
 package org.gephi.visualization.config;
 
-import javax.media.opengl.GL;
+import javax.media.nativewindow.AbstractGraphicsDevice;
+import javax.media.opengl.GL2;
+import javax.media.opengl.GLCapabilities;
 import javax.media.opengl.GLDrawableFactory;
+import javax.media.opengl.GLProfile;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import org.openide.util.NbBundle;
@@ -62,17 +65,20 @@ public class GraphicalConfiguration {
     private String vendor = "";
     private String renderer = "";
     private String versionStr = "";
-
-    public void checkGeneralCompatibility(GL gl) {
+    private GLProfile profile = GLProfile.get(GLProfile.GL2);
+    private GLCapabilities caps = new GLCapabilities(profile); 
+    AbstractGraphicsDevice device = GLDrawableFactory.getFactory(profile).getDefaultDevice();
+                
+    public void checkGeneralCompatibility(GL2 gl) {
         if (messageDelivered) {
             return;
         }
 
         try {
             //Vendor
-            vendor = gl.glGetString(GL.GL_VENDOR);
-            renderer = gl.glGetString(GL.GL_RENDERER);
-            versionStr = gl.glGetString(GL.GL_VERSION);
+            vendor = gl.glGetString(GL2.GL_VENDOR);
+            renderer = gl.glGetString(GL2.GL_RENDERER);
+            versionStr = gl.glGetString(GL2.GL_VERSION);
             String currentConfig = String.format(NbBundle.getMessage(GraphicalConfiguration.class, "graphicalConfiguration_currentConfig"), vendor, renderer, versionStr);
 
             // Check version.
@@ -80,6 +86,7 @@ public class GraphicalConfiguration {
                 String err = String.format(NbBundle.getMessage(GraphicalConfiguration.class, "graphicalConfiguration_exception"), versionStr, currentConfig);
                 throw new GraphicalConfigurationException(err);
             }
+            
 
             //VBO
             boolean vboExtension = gl.isExtensionAvailable("GL_ARB_vertex_buffer_object");
@@ -90,7 +97,8 @@ public class GraphicalConfiguration {
             vboSupport = vboExtension && vboFunctions;
 
             //Pbuffer
-            pBufferSupport = GLDrawableFactory.getFactory().canCreateGLPbuffer();
+
+            pBufferSupport = GLDrawableFactory.getDesktopFactory().canCreateGLPbuffer(device);
 
         } catch (final GraphicalConfigurationException exc) {
             messageDelivered = true;
