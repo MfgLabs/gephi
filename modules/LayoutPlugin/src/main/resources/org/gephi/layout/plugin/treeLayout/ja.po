@@ -19,25 +19,13 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0\n"
 
 msgid "name"
-msgstr "Fruchterman　Reingold"
+msgstr "Tree Layout"
 
 msgid "description"
-msgstr "Fruchterman　Reingoldは1984年以来古典的なレイアウト・アルゴリズムです。"
+msgstr "Implementation of "Improving Walker's Algorithm to Run in Linear Time" by C. Buchheim, M. Jünger, S. Leipert"
 
-msgid "fruchtermanReingold.area.name"
-msgstr "エリア"
+msgid "treeLayout.root.name"
+msgstr "Root node"
 
-msgid "fruchtermanReingold.area.desc"
-msgstr "グラフサイズ面積、例えば100ノードのためには1000。"
-
-msgid "fruchtermanReingold.gravity.name"
-msgstr "重力"
-
-msgid "fruchtermanReingold.gravity.desc"
-msgstr "この力は、切断された要素の分散を避けるために、中央にすべてのノードを引きつけます。"
-
-msgid "fruchtermanReingold.speed.name"
-msgstr "速度"
-
-msgid "fruchtermanReingold.speed.desc"
-msgstr "値 > 0 デフォルト1 ; 精度を犠牲に収束速度を上げます。"
+msgid "treeLayout.root.desc"
+msgstr "Root node id"

@@ -43,6 +43,7 @@ package org.gephi.layout.plugin.treeLayout;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import org.gephi.graph.api.Edge;
 import org.gephi.graph.api.Graph;
@@ -56,27 +57,33 @@ import org.gephi.layout.spi.LayoutProperty;
 import org.openide.util.NbBundle;
 
 /**
- * Ported from:
- * https://bitbucket.org/JonathanGiles/prefusefx/src/prefuse/action/layout/graph/NodeLinkTreeLayout.java
- * http://read.pudn.com/downloads76/sourcecode/java/288603/%E4%BB%A3%E7%A0%81/graphdrawing/Walker.java__.htm
+ * Algorithm's paper:
+ * "Improving Walker's Algorithm to Run in Linear Time"
+ * by C. Buchheim, M. Jünger, S. Leipert
+ * 
+ * Gephi implementation:
  * @author Juilan Bilcke
  */
 public class TreeLayout extends AbstractLayout implements Layout {
 
-    private static final float SPEED_DIVISOR = 800;
-    private static final float AREA_MULTIPLICATOR = 10000;
     //Graph
     protected HierarchicalGraph graph;
-    //Properties
-    private float area;
-    private double gravity;
-    private double speed;
-
-    private Node root = null;
-    private int levels = 0;
     
+    //Properties
     private int rootId = 1;
-       
+        
+    // current state
+    private boolean converged;
+    private Node root = null;
+    
+    // computed stats
+    private int levels = 0;
+   
+    private Comparator<Node> nodeComparator = new Comparator<Node>() {
+                @Override public int compare(Node one, Node two) {
+                    return new Integer(one.getId()).compareTo(new Integer(two.getId()));
+                }
+    };
     public static <T> T[] concat(T[] first, T[] second) {
         T[] result = Arrays.copyOf(first, first.length + second.length);
         System.arraycopy(second, 0, result, first.length, second.length);
@@ -87,9 +94,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     public void resetPropertiesValues() {
-        speed = 1;
-        area = 10000;
-        gravity = 10;
+        rootId = 1;
     }
 
     public HierarchicalTreeNodeLayoutData getOrSetLayout(Node n, HierarchicalTreeNodeLayoutData data) {
@@ -99,6 +104,8 @@ public class TreeLayout extends AbstractLayout implements Layout {
             return n.getNodeData().getLayoutData();
     }
     public void initAlgo() {
+       converged = false;
+                
         this.graph = graphModel.getHierarchicalGraphVisible();
         graph.readLock();
 
@@ -134,6 +141,8 @@ public class TreeLayout extends AbstractLayout implements Layout {
                 targetLayoutData.thread = root;
                 Node[] newChild = { target };
                 sourceLayoutData.children = concat(sourceLayoutData.children, newChild); 
+
+                Arrays.sort(sourceLayoutData.children, nodeComparator);
 
          }
 
@@ -180,15 +189,26 @@ public class TreeLayout extends AbstractLayout implements Layout {
         }
 
         graph.readUnlock();
+         converged = true;
     }
 
     private void firstWalk(Node v) {
         System.out.println("calling firstWalk on " + v.getId());
         HierarchicalTreeNodeLayoutData data = v.getNodeData().getLayoutData();
         if (data.children.length == 0) {
+            System.out.println("is a leaf");
             data.prelim = 0;
         } else {
-            Node defaultAncestror = leftMost(data.children);
+            Node defaultAncestror = data.children[0];
+            for (Node w : data.children) {
+                firstWalk(w);
+                apportion(w, defaultAncestror);
+            }
+            executeShifts(v);
+            HierarchicalTreeNodeLayoutData leftMostChildData = leftMost(data.children).getNodeData().getLayoutData();
+            HierarchicalTreeNodeLayoutData rightMostChildData = rightMost(data.children).getNodeData().getLayoutData();
+            float midpoint = 0.5f * ( leftMostChildData.prelim + rightMostChildData.prelim );
+            
         }
     }
      private void secondWalk(Node v, float m) {
@@ -201,8 +221,36 @@ public class TreeLayout extends AbstractLayout implements Layout {
         }
         
     }
+     
+     private Node leftSibling(Node v) {
+         HierarchicalTreeNodeLayoutData data = v.getNodeData().getLayoutData();
+         if (data.parent != null) {
+            HierarchicalTreeNodeLayoutData p = data.parent.getNodeData().getLayoutData();
+            Node sibling = null;
+            for (Node w : p.children) {
+                if (w.getId() == v.getId()) {
+                    if (sibling != null) {
+                        return sibling;
+                    } else {
+                        return null;
+                    }
+                }
+                sibling = w;
+            }
+         }
+         return null;
+     }
+     
+     private Node rightMostDescendant(Node v) {
+         HierarchicalTreeNodeLayoutData data = v.getNodeData().getLayoutData();
+
+         return null;
+     }
     private Node leftMost(Node[] nodes) {
-        return null;
+        return nodes[0];
+    }
+    private Node rightMost(Node[] nodes) {
+        return nodes[nodes.length - 1];
     }
     private Node nextLeft(Node n) {
         HierarchicalTreeNodeLayoutData layoutData = n.getNodeData().getLayoutData();
@@ -343,9 +391,8 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
     @Override
     public boolean canAlgo() {
-        return true;
+        return !converged;
     }
-
 
     public LayoutProperty[] getProperties() {
         List<LayoutProperty> properties = new ArrayList<LayoutProperty>();
@@ -353,26 +400,12 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
         try {
             properties.add(LayoutProperty.createProperty(
-                    this, Float.class,
-                    NbBundle.getMessage(TreeLayout.class, "treeLayout.area.name"),
+                    this, Integer.class,
+                    NbBundle.getMessage(TreeLayout.class, "treeLayout.root.name"),
                     TREE_LAYOUT,
-                    "treeLayout.area.name",
-                    NbBundle.getMessage(TreeLayout.class, "treeLayout.area.desc"),
-                    "getArea", "setArea"));
-            properties.add(LayoutProperty.createProperty(
-                    this, Double.class,
-                    NbBundle.getMessage(TreeLayout.class, "treeLayout.gravity.name"),
-                    TREE_LAYOUT,
-                    "treeLayout.gravity.name",
-                    NbBundle.getMessage(TreeLayout.class, "treeLayout.gravity.desc"),
-                    "getGravity", "setGravity"));
-            properties.add(LayoutProperty.createProperty(
-                    this, Double.class,
-                    NbBundle.getMessage(TreeLayout.class, "treeLayout.speed.name"),
-                    TREE_LAYOUT,
-                    "treeLayout.speed.name",
-                    NbBundle.getMessage(TreeLayout.class, "treeLayout.speed.desc"),
-                    "getSpeed", "setSpeed"));
+                    "treeLayout.root.name",
+                    NbBundle.getMessage(TreeLayout.class, "treeLayout.root.desc"),
+                    "getRoot", "setRoot"));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -381,39 +414,11 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
 
-    public Float getArea() {
-        return area;
+    public Integer getRoot() {
+        return rootId;
+    }
+    public void setRoot(Integer rootId) {
+        this.rootId = rootId;
     }
 
-    public void setArea(Float area) {
-        this.area = area;
-    }
-
-    /**
-     * @return the gravity
-     */
-    public Double getGravity() {
-        return gravity;
-    }
-
-    /**
-     * @param gravity the gravity to set
-     */
-    public void setGravity(Double gravity) {
-        this.gravity = gravity;
-    }
-
-    /**
-     * @return the speed
-     */
-    public Double getSpeed() {
-        return speed;
-    }
-
-    /**
-     * @param speed the speed to set
-     */
-    public void setSpeed(Double speed) {
-        this.speed = speed;
-    }
 }

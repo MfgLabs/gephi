@@ -19,25 +19,13 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n > 1)\n"
 
 msgid "name"
-msgstr "Arbre hiérarchique"
+msgstr "Tree Layout"
 
 msgid "description"
-msgstr "L'arbre hiérarchique est un algorithme classique de spatialisation."
+msgstr "Implementation of "Improving Walker's Algorithm to Run in Linear Time" by C. Buchheim, M. Jünger, S. Leipert"
 
-msgid "treeLayout.area.name"
-msgstr "Zone"
+msgid "treeLayout.root.name"
+msgstr "Root node"
 
-msgid "treeLayout.area.desc"
-msgstr "La zone de la taille du graphe, par exemple 1000 pour 100 noeuds."
-
-msgid "treeLayout.gravity.name"
-msgstr "Gravité"
-
-msgid "treeLayout.gravity.desc"
-msgstr "Cette force attire tous les noeuds au centre pour éviter la dispertion des composantes déconnectées."
-
-msgid "treeLayout.speed.name"
-msgstr "Vitesse"
-
-msgid "treeLayout.speed.desc"
-msgstr "Valeur > 0 défaut 1 ; augmente la vitesse de convergence au prix d'une perte de précision."
+msgid "treeLayout.root.desc"
+msgstr "Root node id"

@@ -85,11 +85,11 @@ public class TreeLayoutBuilder implements LayoutBuilder {
         }
 
         public int getQualityRank() {
-            return 2;
+            return 5; // the algorithm returns exact and reproducible results
         }
 
         public int getSpeedRank() {
-            return 3;
+            return 5; // the algorithm runs in linear time
         }
     }
 }

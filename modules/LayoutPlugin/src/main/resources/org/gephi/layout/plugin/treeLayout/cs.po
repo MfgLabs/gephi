@@ -19,25 +19,13 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2\n"
 
 msgid "name"
-msgstr "Fruchterman Reingold"
+msgstr "Tree Layout"
 
 msgid "description"
-msgstr "Fruchterman Reingold je klasický algoritmus rozložení, vytvořen roku 1984."
+msgstr "Implementation of "Improving Walker's Algorithm to Run in Linear Time" by C. Buchheim, M. Jünger, S. Leipert"
 
-msgid "fruchtermanReingold.area.name"
-msgstr "Oblast"
+msgid "treeLayout.root.name"
+msgstr "Root node"
 
-msgid "fruchtermanReingold.area.desc"
-msgstr "Oblast velikosti grafu například 1000 pro 100 uzlů."
-
-msgid "fruchtermanReingold.gravity.name"
-msgstr "Gravitace"
-
-msgid "fruchtermanReingold.gravity.desc"
-msgstr "Tato síla nutí všechny uzle do středu aby se předešlo rozptýlení odpojených součástí."
-
-msgid "fruchtermanReingold.speed.name"
-msgstr "Rychlost"
-
-msgid "fruchtermanReingold.speed.desc"
-msgstr "Hodnota > 0 výchozí 1 ; zvýší rychlost sbližování za cenu ztráty přesnosti."
+msgid "treeLayout.root.desc"
+msgstr "Root node id"

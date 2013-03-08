@@ -19,25 +19,13 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n > 1)\n"
 
 msgid "name"
-msgstr "Fruchterman Reingold"
+msgstr "Tree Layout"
 
 msgid "description"
-msgstr "Fruchterman Reingold é um algoritmo de disposição clássico, desde 1984."
+msgstr "Implementation of "Improving Walker's Algorithm to Run in Linear Time" by C. Buchheim, M. Jünger, S. Leipert"
 
-msgid "fruchtermanReingold.area.name"
-msgstr "Área"
+msgid "treeLayout.root.name"
+msgstr "Root node"
 
-msgid "fruchtermanReingold.area.desc"
-msgstr "O tamanho da área do grafo, por exemplo 1000 para 100 nós."
-
-msgid "fruchtermanReingold.gravity.name"
-msgstr "Gravidade"
-
-msgid "fruchtermanReingold.gravity.desc"
-msgstr "Esta força atrai todos os nós para o centro para evitar a dispersão de componentes desconectados."
-
-msgid "fruchtermanReingold.speed.name"
-msgstr "Velocidade"
-
-msgid "fruchtermanReingold.speed.desc"
-msgstr "Valor > 0 (padrão 1); aumenta a velocidade de convergência às custas de uma perda de precisão."
+msgid "treeLayout.root.desc"
+msgstr "Root node id"

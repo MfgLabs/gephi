@@ -19,26 +19,10 @@ msgid "name"
 msgstr "Tree Layout"
 
 msgid "description"
-msgstr "Tree Layout is a classical layout algorithm"
+msgstr "Implementation of "Improving Walker's Algorithm to Run in Linear Time" by C. Buchheim, M. Jünger, S. Leipert"
 
-msgid "treeLayout.area.name"
-msgstr "Area"
+msgid "treeLayout.root.name"
+msgstr "Root node"
 
-msgid "treeLayout.area.desc"
-msgstr "The graph size area, for example 1000 for 100 nodes."
-
-msgid "treeLayout.gravity.name"
-msgstr "Circular?"
-
-msgid "fruchtermanReingold.gravity.desc"
-msgstr ""
-"This force attracts all nodes to the center to avoid dispersion of "
-"disconnected components."
-
-msgid "treeLayout.speed.name"
-msgstr "Speed"
-
-msgid "treeLayout.speed.desc"
-msgstr ""
-"Value > 0 default 1 ; increase convergence speed at the price of a precision "
-"loss."
+msgid "treeLayout.root.desc"
+msgstr "Root node id"

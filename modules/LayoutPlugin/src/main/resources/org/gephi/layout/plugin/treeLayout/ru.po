@@ -19,25 +19,13 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2)\n"
 
 msgid "name"
-msgstr "Fruchterman Reingold"
+msgstr "Tree Layout"
 
 msgid "description"
-msgstr "Fruchterman Reingold -- классический алгоритм укладки, опубликованный в 1984 году."
+msgstr "Implementation of "Improving Walker's Algorithm to Run in Linear Time" by C. Buchheim, M. Jünger, S. Leipert"
 
-msgid "fruchtermanReingold.area.name"
-msgstr "Область"
+msgid "treeLayout.root.name"
+msgstr "Root node"
 
-msgid "fruchtermanReingold.area.desc"
-msgstr "Размер области укладки, например, 1000 для 100 узлов."
-
-msgid "fruchtermanReingold.gravity.name"
-msgstr "Гравитация"
-
-msgid "fruchtermanReingold.gravity.desc"
-msgstr "Сила, стягивающая все узлы к центру. Используется, чтобы избежать \"разлетания\" несвязных компонент. "
-
-msgid "fruchtermanReingold.speed.name"
-msgstr "Скорость"
-
-msgid "fruchtermanReingold.speed.desc"
-msgstr "Положительный параметр (по умолчанию 1); увеличение ведет к ускорению работы за счёт потери качества."
+msgid "treeLayout.root.desc"
+msgstr "Root node id"

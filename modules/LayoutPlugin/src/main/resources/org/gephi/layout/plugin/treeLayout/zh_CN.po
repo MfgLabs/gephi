@@ -18,25 +18,13 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0\n"
 
 msgid "name"
-msgstr "Fruchterman Reingold"
+msgstr "Tree Layout"
 
 msgid "description"
-msgstr "Fruchterman Reingold是一个经典的布局算法，提出于1984年。"
+msgstr "Implementation of "Improving Walker's Algorithm to Run in Linear Time" by C. Buchheim, M. Jünger, S. Leipert"
 
-msgid "fruchtermanReingold.area.name"
-msgstr "区"
+msgid "treeLayout.root.name"
+msgstr "Root node"
 
-msgid "fruchtermanReingold.area.desc"
-msgstr "图形大小面积，例如100个节点为1000。"
-
-msgid "fruchtermanReingold.gravity.name"
-msgstr "重力"
-
-msgid "fruchtermanReingold.gravity.desc"
-msgstr "这种力量吸引了所有节点的中心，以避免失连接的成分的分散。"
-
-msgid "fruchtermanReingold.speed.name"
-msgstr "速度"
-
-msgid "fruchtermanReingold.speed.desc"
-msgstr "值>0默认为1;收敛速度提高了,以精度损失为代价。"
+msgid "treeLayout.root.desc"
+msgstr "Root node id"
