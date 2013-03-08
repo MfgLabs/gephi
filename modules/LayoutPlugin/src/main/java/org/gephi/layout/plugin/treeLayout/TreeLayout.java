@@ -70,16 +70,12 @@ public class TreeLayout extends AbstractLayout implements Layout {
         LEFT, TOP, RIGHT, BOTTOM, CIRCULAR
     };
     
-    private Orientation orientation = Orientation.TOP;
+    private Orientation orientation = Orientation.CIRCULAR;
     
     private static double PI_2 = Math.PI * 2.0;
     
     //Graph
     protected HierarchicalGraph graph;
-    
-    // center (?)
-    private float m_ax = 50.0f;
-    private float m_ay = 50.0f;
     
     private float minx = 0.0f;
     private float maxx = 0.0f;
@@ -211,10 +207,8 @@ public class TreeLayout extends AbstractLayout implements Layout {
          double x = 0.0;
          double y = 0.0; 
           
-          double angle = PI_2 * normalize((double)d.x, (double)minx, (double) maxx);
-          double ny = 100 * normalize((double)d.y, (double)miny, (double) maxy);
-          
-          System.out.println("normalized x: "+normalize((double)d.x, (double)minx, (double) miny));
+
+          System.out.println("Node "+n.getId()+" x: "+normalize((double)d.x, (double)minx, (double) maxx) + ", y: "+normalize((double)d.y, (double)miny, (double) maxy) );
           
           switch(orientation){
               case TOP:
@@ -223,8 +217,18 @@ public class TreeLayout extends AbstractLayout implements Layout {
                  break;
 
               case CIRCULAR:
-                x = 20.0 * ny * Math.cos(angle); 
-                y = 20.0 * ny * Math.sin(angle); 
+               // angle
+               double angleDegrees = 360 * normalize((double)d.x, (double)minx, (double) maxx);
+               System.out.println("in degrees: "+angleDegrees);
+               
+               double angleRadians = PI_2 * Math.toRadians(angleDegrees);
+               System.out.println("in radians: "+Math.toRadians(angleDegrees));
+
+               // radius: 100
+               double radius = 200 * normalize((double)d.y, (double)miny, (double) maxy);
+
+                x = radius * Math.cos(angleRadians); 
+                y = radius * Math.sin(angleRadians); 
                  break;
                   
                default:
@@ -403,9 +407,11 @@ public class TreeLayout extends AbstractLayout implements Layout {
         }
     }
 
-    private float spacing(Node vim, Node vip, boolean siblings) {
-        return 10.0f;
+    private float spacing(Node vim, Node vip) {
+
+        return (getLayoutData(vim).parent == getLayoutData(vip).parent ? 1 : 2) / getLayoutData(vim).depth;
     }
+    
     private HierarchicalTreeNodeLayoutData getLayoutData(Node n) {
        return (HierarchicalTreeNodeLayoutData)n.getNodeData().getLayoutData();
     }
@@ -439,7 +445,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
                 getLayoutData(vop).ancestror = v;
 
                 // prefuse does -sip
-                float shift = (getLayoutData(vim).prelim + sim) - (getLayoutData(vip).prelim + sip) + spacing(vim, vip, false);
+                float shift = (getLayoutData(vim).prelim + sim) - (getLayoutData(vip).prelim + sip) + spacing(vim, vip);
                 if (shift > 0) {
                     moveSubtree(getAncestor(vim, v, a), v, shift);
                     sip += shift;
