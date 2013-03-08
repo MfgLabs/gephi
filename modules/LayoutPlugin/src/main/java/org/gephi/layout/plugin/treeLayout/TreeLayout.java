@@ -72,8 +72,9 @@ public class TreeLayout extends AbstractLayout implements Layout {
     private double gravity;
     private double speed;
 
-    private String rootId; // ID of the root node (could be computed using a walk)
-
+    private Node root = null;
+    private int levels = 0;
+       
     public static <T> T[] concat(T[] first, T[] second) {
         T[] result = Arrays.copyOf(first, first.length + second.length);
         System.arraycopy(second, 0, result, first.length, second.length);
@@ -89,36 +90,67 @@ public class TreeLayout extends AbstractLayout implements Layout {
         gravity = 10;
     }
 
+    public HierarchicalTreeNodeLayoutData getOrSetLayout(Node n, HierarchicalTreeNodeLayoutData data) {
+            if (n.getNodeData().getLayoutData() == null || !(n.getNodeData().getLayoutData() instanceof HierarchicalTreeNodeLayoutData)) {
+                n.getNodeData().setLayoutData(data);
+            }
+            return n.getNodeData().getLayoutData();
+    }
     public void initAlgo() {
         this.graph = graphModel.getHierarchicalGraphVisible();
         graph.readLock();
 
-        for (Node n : graph.getNodes()) {
-            n.getNodeData().setLayoutData(new HierarchicalTreeNodeLayoutData());
-        }
-
+        // we first initialize modifiers, threads, and ancestrors
         Edge[] edges = graph.getEdgesAndMetaEdges().toArray();
+ 
+        System.out.println("FIlling up layout data..");
         for (Edge E : edges) {
-
             Node source = E.getSource();
             Node target = E.getTarget();
+            
+            HierarchicalTreeNodeLayoutData sourceLayoutData = getOrSetLayout(source, new HierarchicalTreeNodeLayoutData());
+            HierarchicalTreeNodeLayoutData targetLayoutData = getOrSetLayout(target, new HierarchicalTreeNodeLayoutData());
+            
+            // either we are the root node, or one of the children
+            if (source == null) {
+               if (root == null) {
+                 System.out.println("found the root node!");
+                 root = target;
+               } else {
+                  System.out.println("found another root node, ignoring..");
+               }
+            } else {
+                targetLayoutData.parent = source;
+                targetLayoutData.modifier = 0;
+                targetLayoutData.ancestror = target;
 
-            HierarchicalTreeNodeLayoutData sourceLayoutData = target.getNodeData().getLayoutData();
-            HierarchicalTreeNodeLayoutData targetLayoutData = target.getNodeData().getLayoutData();
-
-            // set the parent (if the graph is NOT an ordered tree, this will overwrite)
-            if (targetLayoutData.parent != null) {
-                System.out.println("Warning: there is more than one parent, the graph is NOT an ordered tree (aka plane tree)!");
+                Node[] newChild = { target };
+                sourceLayoutData.children = concat(sourceLayoutData.children, newChild); 
             }
-            targetLayoutData.parent = source;
 
-            Node[] newChild = { target };
-            sourceLayoutData.children = concat(sourceLayoutData.children, newChild);
-
-        }
+         }
+        System.out.println("setting thread for each node");
+        for (Node n : graph.getNodes()) {
+            HierarchicalTreeNodeLayoutData data = n.getNodeData().getLayoutData();
+            data.thread = root;
+         }
+        System.out.println("Setting depth for each nodes..");
+        levels = setDepth(root, 0);
+        System.out.println("max depth: " + levels);
         graph.readUnlock();
     }
 
+    public int setDepth(Node n, int depth) {
+         HierarchicalTreeNodeLayoutData data = n.getNodeData().getLayoutData();
+         data.depth = depth;
+         int max = depth;
+         for (Node child : data.children) {
+             int d = setDepth(child, depth + 1);
+             if (d > max) max = d;
+         }
+         return max;
+    }
+    
     public void goAlgo() {
         this.graph = graphModel.getHierarchicalGraphVisible();
         graph.readLock();
@@ -133,78 +165,28 @@ public class TreeLayout extends AbstractLayout implements Layout {
             layoutData.dx = 0;
             layoutData.dy = 0;
         }
-
-        float maxDisplace = (float) (Math.sqrt(AREA_MULTIPLICATOR * area) / 10f);					// Déplacement limite : on peut le calibrer...
-        float k = (float) Math.sqrt((AREA_MULTIPLICATOR * area) / (1f + nodes.length));		// La variable k, l'idée principale du layout.
-
-        for (Node N1 : nodes) {
-            for (Node N2 : nodes) {	// On fait toutes les paires de noeuds
-                if (N1 != N2) {
-                    float xDist = N1.getNodeData().x() - N2.getNodeData().x();	// distance en x entre les deux noeuds
-                    float yDist = N1.getNodeData().y() - N2.getNodeData().y();
-                    float dist = (float) Math.sqrt(xDist * xDist + yDist * yDist);	// distance tout court
-
-                    if (dist > 0) {
-                        float repulsiveF = k * k / dist;			// Force de répulsion
-                        HierarchicalTreeNodeLayoutData layoutData = N1.getNodeData().getLayoutData();
-                        layoutData.dx += xDist / dist * repulsiveF;		// on l'applique...
-                        layoutData.dy += yDist / dist * repulsiveF;
-                    }
-                }
-            }
-        }
-        for (Edge E : edges) {
-            // Idem, pour tous les noeuds on applique la force d'attraction
-
-            Node Nf = E.getSource();
-            Node Nt = E.getTarget();
-
-            float xDist = Nf.getNodeData().x() - Nt.getNodeData().x();
-            float yDist = Nf.getNodeData().y() - Nt.getNodeData().y();
-            float dist = (float) Math.sqrt(xDist * xDist + yDist * yDist);
-
-            float attractiveF = dist * dist / k;
-
-            if (dist > 0) {
-                HierarchicalTreeNodeLayoutData sourceLayoutData = Nf.getNodeData().getLayoutData();
-                HierarchicalTreeNodeLayoutData targetLayoutData = Nt.getNodeData().getLayoutData();
-                sourceLayoutData.dx -= xDist / dist * attractiveF;
-                sourceLayoutData.dy -= yDist / dist * attractiveF;
-                targetLayoutData.dx += xDist / dist * attractiveF;
-                targetLayoutData.dy += yDist / dist * attractiveF;
-            }
-        }
-        // gravity
         for (Node n : nodes) {
-            NodeData nodeData = n.getNodeData();
-            HierarchicalTreeNodeLayoutData layoutData = nodeData.getLayoutData();
-            float d = (float) Math.sqrt(nodeData.x() * nodeData.x() + nodeData.y() * nodeData.y());
-            float gf = 0.01f * k * (float) gravity * d;
-            layoutData.dx -= gf * nodeData.x() / d;
-            layoutData.dy -= gf * nodeData.y() / d;
-        }
-        // speed
-        for (Node n : nodes) {
+
             HierarchicalTreeNodeLayoutData layoutData = n.getNodeData().getLayoutData();
-            layoutData.dx *= speed / SPEED_DIVISOR;
-            layoutData.dy *= speed / SPEED_DIVISOR;
+            layoutData.dx = 0;
+            layoutData.dy = 0;
         }
-        for (Node n : nodes) {
-            // Maintenant on applique le déplacement calculé sur les noeuds.
-            // nb : le déplacement à chaque passe "instantanné" correspond à la force : c'est une sorte d'accélération.
-            HierarchicalTreeNodeLayoutData layoutData = n.getNodeData().getLayoutData();
-            float xDist = layoutData.dx;
-            float yDist = layoutData.dy;
-            float dist = (float) Math.sqrt(layoutData.dx * layoutData.dx + layoutData.dy * layoutData.dy);
-            if (dist > 0 && !n.getNodeData().isFixed()) {
-                float limitedDist = Math.min(maxDisplace * ((float) speed / SPEED_DIVISOR), dist);
-                n.getNodeData().setX(n.getNodeData().x() + xDist / dist * limitedDist);
-                n.getNodeData().setY(n.getNodeData().y() + yDist / dist * limitedDist);
-            }
-        }
+
         graph.readUnlock();
     }
 
+    private Node firstWalk(Node v) {
+        HierarchicalTreeNodeLayoutData data = v.getNodeData().getLayoutData();
+        if (data.children.length == 0) {
+            data.prelim = 0;
+        } else {
+            Node defaultAncestror = leftMost(data.children);
+        }
+    }
+    
+    private Node leftMost(Node[] nodes) {
+        
+    }
     private Node nextLeft(Node n) {
         HierarchicalTreeNodeLayoutData layoutData = n.getNodeData().getLayoutData();
         Node c = null;
@@ -273,25 +255,14 @@ public class TreeLayout extends AbstractLayout implements Layout {
         return null;
     }
 
-    private void secondWalk(Node n, Node p, double m, int depth) {
-        HierarchicalTreeNodeLayoutData nLayoutData = n.getNodeData().getLayoutData();
-        HierarchicalTreeNodeLayoutData pLayoutData = p.getNodeData().getLayoutData();
-        /*
-        Params np = getParams(n);
-        setBreadth(n, p, np.prelim + m);
-        setDepth(n, p, m_depths[depth]);
-
-        if ( n.isExpanded() ) {
-            depth += 1;
-            for ( Node c = (Node)n.getFirstChild();
-                  c != null; c = (Node)c.getNextSibling() )
-            {
-                secondWalk(c, n, m + np.mod, depth);
-            }
+    private void secondWalk(Node v, float m) {
+        HierarchicalTreeNodeLayoutData data = v.getNodeData().getLayoutData();
+        data.x = data.prelim + m;
+        data.y = data.depth;
+        for (Node child : data.children) {
+            secondWalk(child, m + data.modifier);
         }
-
-        np.clear();
-        */
+        
     }
     private Node apportion(Node v, Node a) {
         HierarchicalTreeNodeLayoutData vLayoutData = v.getNodeData().getLayoutData();
