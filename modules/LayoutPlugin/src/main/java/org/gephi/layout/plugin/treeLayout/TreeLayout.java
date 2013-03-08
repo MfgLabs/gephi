@@ -356,25 +356,16 @@ public class TreeLayout extends AbstractLayout implements Layout {
             return defaultAncestror;
         }
     }
- //noeud suivant sur le contour droit du sous-arbre dont la racine est v   
-  private static TreeNode nextRight(TreeNode v){   
-    if(!(v.isLeaf())) return (TreeNode)v.getLastChild();   
-    else return v.thread;   
-  }   
-   
-  //noeud suivant sur le contour gauche du sous-arbre dont la racine est v   
-  private static TreeNode nextLeft(TreeNode v){   
-    if(!(v.isLeaf())) return (TreeNode)v.getFirstChild();   
-    else return v.thread;   
-  }   
+ 
 
     private Node apportion(Node v, Node defaultAncestror) {
         HierarchicalTreeNodeLayoutData vd = v.getNodeData().getLayoutData();
         HierarchicalTreeNodeLayoutData defaultAncestrord = defaultAncestror.getNodeData().getLayoutData();
-        
+        System.out.println("apportion("+v.getId()+")");
 
         Node w = getLeftSibling(v);
         if (w != null) { 
+
             Node     vip, vim, vop, vom;
             float    sip, sim, sop, som;
 
@@ -382,7 +373,8 @@ public class TreeLayout extends AbstractLayout implements Layout {
             vim = w;
             vom = getLeftMostSibling(vip);
 
-            
+            System.out.println(vom.getId() + " = getLeftSibling("+v.getId()+")");
+                                
             HierarchicalTreeNodeLayoutData vipd = vip.getNodeData().getLayoutData(),
                                            vopd = vop.getNodeData().getLayoutData(),
                                            vimd = vim.getNodeData().getLayoutData(),
@@ -393,14 +385,15 @@ public class TreeLayout extends AbstractLayout implements Layout {
             sim = vimd.modifier;
             som = vomd.modifier;
 
-            Node nr = nextRight(vim);
-            Node nl = nextLeft(vip);
+            Node nr = getNextRight(vim);
+            Node nl = getNextLeft(vip);
             while ( nr != null && nl != null ) {
                 vim = nr;
                 vip = nl;
-                vom = nextLeft(vom);
-                vop = nextRight(vop);
+                vom = getNextLeft(vom);
+                vop = getNextRight(vop);
                 vopd.ancestror = v;
+                /*
                 float shift = (vimd.prelim + sim) -
                         (vipd.prelim + sip) + spacing(vim,vip,false);
                 if ( shift > 0 ) {
@@ -408,26 +401,26 @@ public class TreeLayout extends AbstractLayout implements Layout {
                     sip += shift;
                     sop += shift;
                 }
+                * */
                 sim += vimd.modifier;
                 sip += vipd.modifier;
                 som += vomd.modifier;
                 sop += vopd.modifier;
 
-                nr = nextRight(vim);
-                nl = nextLeft(vip);
+                nr = getNextRight(vim);
+                nl = getNextLeft(vip);
             }
+        
+            if ( nr != null && getNextRight(vop) == null ) {
+                    vopd.thread = nr;
+                    vopd.modifier += sim - sop;
+             }
+             if ( nl != null && getNextLeft(vom) == null ) {
+                    vomd.thread = nl;
+                    vomd.modifier += sip - som;
+                    defaultAncestror = v;
+             }
         }
-        if ( nr != null && nextRight(vop) == null ) {
-                HierarchicalTreeNodeLayoutData vopd = vop.getNodeData().getLayoutData();
-                vopd.thread = nr;
-                vopd.modifier += sim - sop;
-         }
-         if ( nl != null && nextLeft(vom) == null ) {
-                HierarchicalTreeNodeLayoutData vomd = vom.getNodeData().getLayoutData();
-                vomd.thread = nl;
-                vomd.modifier += sip - som;
-                defaultAncestror = v;
-         }
 
         defaultAncestror = v;
         
