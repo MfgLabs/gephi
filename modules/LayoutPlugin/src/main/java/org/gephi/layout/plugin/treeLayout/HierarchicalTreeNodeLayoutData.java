@@ -16,6 +16,7 @@ public class HierarchicalTreeNodeLayoutData implements LayoutData {
     public float y = 0;
 
     public Node parent = null;
+    public int number = 0;
     public Node[] children = {};
 
     public float change = 0;

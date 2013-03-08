@@ -205,37 +205,45 @@ public class TreeLayout extends AbstractLayout implements Layout {
                 apportion(w, defaultAncestror);
             }
             executeShifts(v);
-            HierarchicalTreeNodeLayoutData leftMostChildData = leftMost(data.children).getNodeData().getLayoutData();
-            HierarchicalTreeNodeLayoutData rightMostChildData = rightMost(data.children).getNodeData().getLayoutData();
-            float midpoint = 0.5f * ( leftMostChildData.prelim + rightMostChildData.prelim );
+            HierarchicalTreeNodeLayoutData leftMostd = getLeftMost(data.children).getNodeData().getLayoutData();
+            HierarchicalTreeNodeLayoutData rightMostd = getRightMost(data.children).getNodeData().getLayoutData();
+            float midpoint = 0.5f * ( leftMostd.prelim + rightMostd.prelim );
             
+            Node leftSibling = getLeftSibling(v);
+            if (leftSibling != null) {
+                HierarchicalTreeNodeLayoutData leftSiblingLayoutData = v.getNodeData().getLayoutData();
+                data.prelim = leftSiblingLayoutData.prelim + 10.0f;
+                data.modifier = data.prelim - midpoint;
+            } else {
+                data.prelim = midpoint;
+            }
         }
     }
      private void secondWalk(Node v, float m) {
          System.out.println(" -> calling secondWalk on " + v.getId() + ", m is: " + m);
-        HierarchicalTreeNodeLayoutData data = v.getNodeData().getLayoutData();
-        data.x = data.prelim + m;
-        data.y = data.depth;
-        for (Node child : data.children) {
-            secondWalk(child, m + data.modifier);
+        HierarchicalTreeNodeLayoutData vd = v.getNodeData().getLayoutData();
+        vd.x = vd.prelim + m;
+        vd.y = vd.depth;
+        for (Node child : vd.children) {
+            secondWalk(child, m + vd.modifier);
         }
         
     }
      
-     private Node leftSibling(Node v) {
-         HierarchicalTreeNodeLayoutData data = v.getNodeData().getLayoutData();
-         if (data.parent != null) {
-            HierarchicalTreeNodeLayoutData p = data.parent.getNodeData().getLayoutData();
-            Node sibling = null;
-            for (Node w : p.children) {
+     private Node getLeftSibling(Node v) {
+         HierarchicalTreeNodeLayoutData vd = v.getNodeData().getLayoutData();
+         if (vd.parent != null) {
+            HierarchicalTreeNodeLayoutData pd = vd.parent.getNodeData().getLayoutData();
+            Node leftSibling = null;
+            for (Node w : pd.children) {
                 if (w.getId() == v.getId()) {
-                    if (sibling != null) {
-                        return sibling;
+                    if (leftSibling != null) {
+                        return leftSibling;
                     } else {
                         return null;
                     }
                 }
-                sibling = w;
+                leftSibling = w;
             }
          }
          return null;
@@ -246,36 +254,57 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
          return null;
      }
-    private Node leftMost(Node[] nodes) {
-        return nodes[0];
+     
+     private boolean isLeaf(Node v) {
+         HierarchicalTreeNodeLayoutData vd = v.getNodeData().getLayoutData();
+         return (vd.children.length == 0);
+     }
+     
+    private Node getLeftMost(Node[] nodes) {
+        return (nodes.length > 0) ? nodes[0] : null;
     }
-    private Node rightMost(Node[] nodes) {
-        return nodes[nodes.length - 1];
+    private Node getRightMost(Node[] nodes) {
+        return (nodes.length > 0) ? nodes[nodes.length - 1] : null;
     }
-    private Node nextLeft(Node n) {
+   private Node getLeftMost(Node n) {
         HierarchicalTreeNodeLayoutData layoutData = n.getNodeData().getLayoutData();
-        Node c = null;
-
-        /*
-        if ( n.isExpanded() ) c = (Node)n.getFirstChild();
-        return ( c != null ? c : getParams(n).thread );
-        */
-        return c;
+        return getLeftMost(layoutData.children);
     }
-
-    private Node nextRight(Node n) {
+    private Node getRightMost(Node n) {
         HierarchicalTreeNodeLayoutData layoutData = n.getNodeData().getLayoutData();
-        Node c = null;
-        /*
-        if ( n.isExpanded() ) c = (Node)n.getLastChild();
-        return ( c != null ? c : getParams(n).thread );
-        */
-        return c;
+        return getRightMost(layoutData.children);
+    }
+    private Node getLeftMostSibling(Node n) {
+        HierarchicalTreeNodeLayoutData layoutData = n.getNodeData().getLayoutData();
+        if (layoutData.parent == null) return n;
+        return getLeftMost(layoutData.parent);
+    }
+    private Node getRightMostSibling(Node n) {
+        HierarchicalTreeNodeLayoutData layoutData = n.getNodeData().getLayoutData();
+        if (layoutData.parent == null) return n;
+        return getRightMost(layoutData.parent);
     }
 
-    private void moveSubtree(Node wm, Node wp, double shift) {
-        HierarchicalTreeNodeLayoutData wmLayoutData = wm.getNodeData().getLayoutData();
-        HierarchicalTreeNodeLayoutData wpLayoutData = wp.getNodeData().getLayoutData();
+    private Node getNodeThread(Node v) {
+      HierarchicalTreeNodeLayoutData vd = v.getNodeData().getLayoutData();
+      return vd.thread;
+    }
+    private Node getNextLeft(Node v) {
+        System.out.println("getNextLeft("+v.getId()+")");
+        Node leftMostChild = getLeftMost(v);
+        return (leftMostChild != null) ? leftMostChild : getNodeThread(v);
+    }
+
+    private Node getNextRight(Node v) {
+        System.out.println("getNextRight("+v.getId()+")");
+       Node rightMostChild = getRightMost(v);
+        return (rightMostChild != null) ? rightMostChild : getNodeThread(v);
+    }
+
+    private void moveSubtree(Node wm, Node wp, float shift) {
+        HierarchicalTreeNodeLayoutData wmd = wm.getNodeData().getLayoutData();
+        HierarchicalTreeNodeLayoutData wpd = wp.getNodeData().getLayoutData();
+        System.out.println("moveSubtree("+wm.getId()+", "+wp.getId()+", "+shift+")");
         /*
         Params wmp = getParams(wm);
         Params wpp = getParams(wp);
@@ -289,7 +318,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     private void executeShifts(Node n) {
-        HierarchicalTreeNodeLayoutData layoutData = n.getNodeData().getLayoutData();
+        HierarchicalTreeNodeLayoutData nd = n.getNodeData().getLayoutData();
         /*
         double shift = 0, change = 0;
         for ( Node c = (Node)n.getLastChild();
@@ -304,46 +333,65 @@ public class TreeLayout extends AbstractLayout implements Layout {
         */
     }
 
-    private Node ancestor(Node vim, Node v, Node a) {
-        System.out.println("calling ancestror");
-        HierarchicalTreeNodeLayoutData vimLayoutData = vim.getNodeData().getLayoutData();
-        HierarchicalTreeNodeLayoutData vLayoutData = v.getNodeData().getLayoutData();
-        HierarchicalTreeNodeLayoutData aLayoutData = a.getNodeData().getLayoutData();
-        /*
-        Node p = (Node)v.getParent();
-        Params vimp = getParams(vim);
-        if ( vimp.ancestor.getParent() == p ) {
-            return vimp.ancestor;
-        } else {
-            return a;
+    private boolean hasChild(Node v, Node candidate) {
+        if (v == null) {
+            return false;
         }
-        */
-        return null;
+        HierarchicalTreeNodeLayoutData vd = v.getNodeData().getLayoutData();
+        Node candidateParent = getParent(candidate);
+        if (candidateParent == null) {
+            return false;
+        }
+        return (v.getId() == candidateParent.getId());
     }
-
-
-    private Node apportion(Node v, Node a) {
-        HierarchicalTreeNodeLayoutData vLayoutData = v.getNodeData().getLayoutData();
-        HierarchicalTreeNodeLayoutData aLayoutData = a.getNodeData().getLayoutData();
-    /*
-        v.getAttributes()
-        Node w = v.getPreviousSibling();
-        if (w == null) {
-            return ancestror;
+    private Node getParent(Node v) {
+        HierarchicalTreeNodeLayoutData vd = v.getNodeData().getLayoutData();
+        return vd.parent;
+    }
+    
+    private Node getAncestor(Node vim, Node v, Node defaultAncestror) {
+        if (hasChild(getParent(v), getParent(vim))) {
+            return getParent(vim);
+        } else {
+            return defaultAncestror;
         }
+    }
+ //noeud suivant sur le contour droit du sous-arbre dont la racine est v   
+  private static TreeNode nextRight(TreeNode v){   
+    if(!(v.isLeaf())) return (TreeNode)v.getLastChild();   
+    else return v.thread;   
+  }   
+   
+  //noeud suivant sur le contour gauche du sous-arbre dont la racine est v   
+  private static TreeNode nextLeft(TreeNode v){   
+    if(!(v.isLeaf())) return (TreeNode)v.getFirstChild();   
+    else return v.thread;   
+  }   
 
+    private Node apportion(Node v, Node defaultAncestror) {
+        HierarchicalTreeNodeLayoutData vd = v.getNodeData().getLayoutData();
+        HierarchicalTreeNodeLayoutData defaultAncestrord = defaultAncestror.getNodeData().getLayoutData();
+        
 
+        Node w = getLeftSibling(v);
+        if (w != null) { 
             Node     vip, vim, vop, vom;
-            double   sip, sim, sop, som;
+            float    sip, sim, sop, som;
 
             vip = vop = v;
             vim = w;
-            vom = vip.getParent().getFirstChild();
+            vom = getLeftMostSibling(vip);
 
-            sip = getParams(vip).mod;
-            sop = getParams(vop).mod;
-            sim = getParams(vim).mod;
-            som = getParams(vom).mod;
+            
+            HierarchicalTreeNodeLayoutData vipd = vip.getNodeData().getLayoutData(),
+                                           vopd = vop.getNodeData().getLayoutData(),
+                                           vimd = vim.getNodeData().getLayoutData(),
+                                           vomd = vom.getNodeData().getLayoutData();
+       
+            sip = vipd.modifier;
+            sop = vopd.modifier;
+            sim = vimd.modifier;
+            som = vomd.modifier;
 
             Node nr = nextRight(vim);
             Node nl = nextLeft(vip);
@@ -352,35 +400,38 @@ public class TreeLayout extends AbstractLayout implements Layout {
                 vip = nl;
                 vom = nextLeft(vom);
                 vop = nextRight(vop);
-                getParams(vop).ancestor = v;
-                double shift = (getParams(vim).prelim + sim) -
-                        (getParams(vip).prelim + sip) + spacing(vim,vip,false);
+                vopd.ancestror = v;
+                float shift = (vimd.prelim + sim) -
+                        (vipd.prelim + sip) + spacing(vim,vip,false);
                 if ( shift > 0 ) {
-                    moveSubtree(getAncestor(vim,v,ancestror), v, shift);
+                    moveSubtree(getAncestor(vim,v,defaultAncestror), v, shift);
                     sip += shift;
                     sop += shift;
                 }
-                sim += getParams(vim).mod;
-                sip += getParams(vip).mod;
-                som += getParams(vom).mod;
-                sop += getParams(vop).mod;
+                sim += vimd.modifier;
+                sip += vipd.modifier;
+                som += vomd.modifier;
+                sop += vopd.modifier;
 
                 nr = nextRight(vim);
                 nl = nextLeft(vip);
             }
-            if ( nr != null && nextRight(vop) == null ) {
-                Params vopp = getParams(vop);
-                vopp.thread = nr;
-                vopp.mod += sim - sop;
-            }
-            if ( nl != null && nextLeft(vom) == null ) {
-                Params vomp = getParams(vom);
-                vomp.thread = nl;
-                vomp.mod += sip - som;
-                ancestror = v;
-            }
-    */
-        return a;
+        }
+        if ( nr != null && nextRight(vop) == null ) {
+                HierarchicalTreeNodeLayoutData vopd = vop.getNodeData().getLayoutData();
+                vopd.thread = nr;
+                vopd.modifier += sim - sop;
+         }
+         if ( nl != null && nextLeft(vom) == null ) {
+                HierarchicalTreeNodeLayoutData vomd = vom.getNodeData().getLayoutData();
+                vomd.thread = nl;
+                vomd.modifier += sip - som;
+                defaultAncestror = v;
+         }
+
+        defaultAncestror = v;
+        
+        return defaultAncestror;
     }
 
     public void endAlgo() {
