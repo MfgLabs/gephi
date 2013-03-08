@@ -74,6 +74,8 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
     private Node root = null;
     private int levels = 0;
+    
+    private int rootId = 1;
        
     public static <T> T[] concat(T[] first, T[] second) {
         T[] result = Arrays.copyOf(first, first.length + second.length);
@@ -100,41 +102,43 @@ public class TreeLayout extends AbstractLayout implements Layout {
         this.graph = graphModel.getHierarchicalGraphVisible();
         graph.readLock();
 
+        for (Node n : graph.getNodes()) {
+            getOrSetLayout(n, new HierarchicalTreeNodeLayoutData());
+            if (n.getId() == rootId) {
+                root = n;
+            }
+         }
+                
         // we first initialize modifiers, threads, and ancestrors
         Edge[] edges = graph.getEdgesAndMetaEdges().toArray();
  
-        System.out.println("FIlling up layout data..");
+        System.out.println("STEP 1. INITIALIZING.");
         for (Edge E : edges) {
             Node source = E.getSource();
             Node target = E.getTarget();
-            
+            System.out.println(" - source: " + source.getId());
+            System.out.println(" - target: " + target.getId());
+            System.out.println("");
             HierarchicalTreeNodeLayoutData sourceLayoutData = getOrSetLayout(source, new HierarchicalTreeNodeLayoutData());
             HierarchicalTreeNodeLayoutData targetLayoutData = getOrSetLayout(target, new HierarchicalTreeNodeLayoutData());
             
-            // either we are the root node, or one of the children
-            if (source == null) {
-               if (root == null) {
-                 System.out.println("found the root node!");
-                 root = target;
-               } else {
-                  System.out.println("found another root node, ignoring..");
-               }
-            } else {
+ 
+            // detect the direction using timestamps
+            //System.out.println("source timestamp:  " + source.getNodeData().getAttributes().getValue("timestamp"));
+            //System.out.println("target timestamp:  " + source.getNodeData().getAttributes().getValue("timestamp"));
+           // Long ts = (Long) source.getAttributes().getValue("timestamp");
+            
                 targetLayoutData.parent = source;
                 targetLayoutData.modifier = 0;
                 targetLayoutData.ancestror = target;
-
+                targetLayoutData.thread = root;
                 Node[] newChild = { target };
                 sourceLayoutData.children = concat(sourceLayoutData.children, newChild); 
-            }
 
          }
-        System.out.println("setting thread for each node");
-        for (Node n : graph.getNodes()) {
-            HierarchicalTreeNodeLayoutData data = n.getNodeData().getLayoutData();
-            data.thread = root;
-         }
-        System.out.println("Setting depth for each nodes..");
+
+        System.out.println("root: " + root.getId());
+        System.out.println("Setting depth for each nodes starting from root..");
         levels = setDepth(root, 0);
         System.out.println("max depth: " + levels);
         graph.readUnlock();
@@ -157,25 +161,29 @@ public class TreeLayout extends AbstractLayout implements Layout {
         Node[] nodes = graph.getNodes().toArray();
         Edge[] edges = graph.getEdgesAndMetaEdges().toArray();
 
+        HierarchicalTreeNodeLayoutData rootLayoutData = root.getNodeData().getLayoutData();
+        System.out.println("STEP 2. CALLING FIRST WALK");
+        firstWalk(root);
+        
+        System.out.println("STEP 3. CALLING SECOND WALK");
+        secondWalk(root, - rootLayoutData.prelim);
+        
+        System.out.println("STEP 4. copying layout coordinates into nodes coordinates");
         for (Node n : nodes) {
-            if (n.getNodeData().getLayoutData() == null || !(n.getNodeData().getLayoutData() instanceof HierarchicalTreeNodeLayoutData)) {
-                n.getNodeData().setLayoutData(new HierarchicalTreeNodeLayoutData());
-            }
             HierarchicalTreeNodeLayoutData layoutData = n.getNodeData().getLayoutData();
-            layoutData.dx = 0;
-            layoutData.dy = 0;
-        }
-        for (Node n : nodes) {
-
-            HierarchicalTreeNodeLayoutData layoutData = n.getNodeData().getLayoutData();
-            layoutData.dx = 0;
-            layoutData.dy = 0;
+            layoutData.x = 0;
+            layoutData.y = 0;
+            
+            NodeData nodeData = n.getNodeData();
+            nodeData.setX(layoutData.x);
+            nodeData.setY(layoutData.y);
         }
 
         graph.readUnlock();
     }
 
-    private Node firstWalk(Node v) {
+    private void firstWalk(Node v) {
+        System.out.println("calling firstWalk on " + v.getId());
         HierarchicalTreeNodeLayoutData data = v.getNodeData().getLayoutData();
         if (data.children.length == 0) {
             data.prelim = 0;
@@ -183,9 +191,18 @@ public class TreeLayout extends AbstractLayout implements Layout {
             Node defaultAncestror = leftMost(data.children);
         }
     }
-    
-    private Node leftMost(Node[] nodes) {
+     private void secondWalk(Node v, float m) {
+         System.out.println(" -> calling secondWalk on " + v.getId() + ", m is: " + m);
+        HierarchicalTreeNodeLayoutData data = v.getNodeData().getLayoutData();
+        data.x = data.prelim + m;
+        data.y = data.depth;
+        for (Node child : data.children) {
+            secondWalk(child, m + data.modifier);
+        }
         
+    }
+    private Node leftMost(Node[] nodes) {
+        return null;
     }
     private Node nextLeft(Node n) {
         HierarchicalTreeNodeLayoutData layoutData = n.getNodeData().getLayoutData();
@@ -240,6 +257,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     private Node ancestor(Node vim, Node v, Node a) {
+        System.out.println("calling ancestror");
         HierarchicalTreeNodeLayoutData vimLayoutData = vim.getNodeData().getLayoutData();
         HierarchicalTreeNodeLayoutData vLayoutData = v.getNodeData().getLayoutData();
         HierarchicalTreeNodeLayoutData aLayoutData = a.getNodeData().getLayoutData();
@@ -255,15 +273,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
         return null;
     }
 
-    private void secondWalk(Node v, float m) {
-        HierarchicalTreeNodeLayoutData data = v.getNodeData().getLayoutData();
-        data.x = data.prelim + m;
-        data.y = data.depth;
-        for (Node child : data.children) {
-            secondWalk(child, m + data.modifier);
-        }
-        
-    }
+
     private Node apportion(Node v, Node a) {
         HierarchicalTreeNodeLayoutData vLayoutData = v.getNodeData().getLayoutData();
         HierarchicalTreeNodeLayoutData aLayoutData = a.getNodeData().getLayoutData();
