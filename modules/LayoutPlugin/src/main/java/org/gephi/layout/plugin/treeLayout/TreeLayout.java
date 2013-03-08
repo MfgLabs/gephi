@@ -410,6 +410,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
         System.out.println("moveSubtree(" + wm.getId() + ", " + wp.getId() + ", " + shift + ")");
 
         float subtrees = wpd.number - wmd.number;
+        System.out.println("subtrees: " + subtrees+ " = "+wpd.number + " - "+wmd.number);
         wpd.change -= shift / subtrees;
         wpd.shift += shift;
         wmd.change += shift / subtrees;
@@ -420,11 +421,10 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
     private void executeShifts(Node v) {
         System.out.println("executeShifts("+v.getId()+")");
-        HierarchicalTreeNodeLayoutData vd = v.getNodeData().getLayoutData();
-
+        Node[] children =  (( HierarchicalTreeNodeLayoutData) v.getNodeData().getLayoutData()).children;
         float shift = 0, change = 0;
-        for (int i = vd.children.length - 1; i > -1; i--) {
-            Node w = vd.children[i];
+        for (int i = children.length - 1; i > -1; i--) {
+            Node w = children[i];
             HierarchicalTreeNodeLayoutData wd = w.getNodeData().getLayoutData();
             wd.prelim += shift;
             wd.modifier += shift;
@@ -495,10 +495,10 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
             Node nr = getNextRight(vim);
             Node nl = getNextLeft(vip);
-            System.out.println("     initial nr: " + nr.getId() + "  nl: " + nl.getId());
+
             int i = 0;
             while (nr != null && nl != null) {
-
+                System.out.println("    before iteration nr: " + nr.getId() + "  nl: " + nl.getId());
                 vim = nr;
                 vip = nl;
                 vom = getNextLeft(vom);
@@ -537,7 +537,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
             }
         }
 
-        defaultAncestror = v;
 
         return defaultAncestror;
     }
