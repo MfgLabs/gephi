@@ -70,7 +70,9 @@ public class TreeLayout extends AbstractLayout implements Layout {
         LEFT, TOP, RIGHT, BOTTOM, CIRCULAR
     };
     
-    private Orientation orientation = Orientation.BOTTOM;
+    private Orientation orientation = Orientation.TOP;
+    
+    private static double PI_2 = Math.PI * 2.0;
     
     //Graph
     protected HierarchicalGraph graph;
@@ -239,13 +241,38 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
          for (Node n : nodes)  {    
           HierarchicalTreeNodeLayoutData d = n.getNodeData().getLayoutData();
+          
+         double x = 0.0;
+         double y = 0.0; 
+          
+          double angle = normalize((double)d.x, (double)minx, (double) maxx) * PI_2;
+          
+          System.out.println("normalized x: "+normalize((double)d.x, (double)minx, (double) miny));
+          
+          switch(orientation){
+              case TOP:
+                x = 100.0 * (double)d.x; 
+                y = 300.0 * (double)d.y; 
+                 break;
 
-          n.getNodeData().setX(d.x * 20);
-           n.getNodeData().setY(d.y * 400);
+              case CIRCULAR:
+                x = 200.0 * (double)d.y * Math.cos(angle); 
+                y = 200.0 * (double)d.y * Math.sin(angle); 
+                 break;
+                  
+               default:
+                  break;
+          }
+           System.out.println("final x: "+x+", y: "+y);     
+           n.getNodeData().setX(new Float(x));
+           n.getNodeData().setY(new Float(y));
          }
         
         graph.readUnlock();
         converged = true;
+    }
+    private double normalize(double value, double min, double max) {
+        return (value - min) / (max - min);
     }
 
     private void firstWalk(Node v, int num) {
