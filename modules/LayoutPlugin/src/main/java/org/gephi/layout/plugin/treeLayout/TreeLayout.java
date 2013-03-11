@@ -70,7 +70,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
         LEFT, TOP, RIGHT, BOTTOM, CIRCULAR
     };
     
-    private Orientation orientation = Orientation.CIRCULAR;
+    private Orientation orientation = Orientation.TOP;
     
     private static double PI_2 = Math.PI * 2.0;
     
@@ -110,12 +110,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
         rootId = 1;
     }
 
-    public HierarchicalTreeNodeLayoutData getOrSetLayout(Node n, HierarchicalTreeNodeLayoutData data) {
-        if (n.getNodeData().getLayoutData() == null || !(n.getNodeData().getLayoutData() instanceof HierarchicalTreeNodeLayoutData)) {
-            n.getNodeData().setLayoutData(data);
-        }
-        return n.getNodeData().getLayoutData();
-    }
 
     public void initAlgo() {
         converged = false;
@@ -204,28 +198,34 @@ public class TreeLayout extends AbstractLayout implements Layout {
          for (Node n : nodes)  {    
           HierarchicalTreeNodeLayoutData d = n.getNodeData().getLayoutData();
           
-         double x = 0.0;
-         double y = 0.0; 
+         double x = d.x;
+         double y = d.y; 
           
 
-          System.out.println("Node "+n.getId()+" x: "+normalize((double)d.x, (double)minx, (double) maxx) + ", y: "+normalize((double)d.y, (double)miny, (double) maxy) );
+          System.out.println("Node "+n.getId()+" x: "+normalize(d.x, minx, maxx) + ", y: "+normalize(d.y, miny, maxy) );
           
           switch(orientation){
               case TOP:
-                x = 10.0 * (double)d.x; 
-                y = 30.0 * (double)d.y; 
+
+                if (n.getId() == rootId) {
+                    x = (maxx - minx) * 0.5;
+                    System.out.println(""+x+" = ("+minx+" - "+maxx+") * 0.5 = ("+(minx - maxx)+") * 0.5");
+                }
+                x = 30.0 * x; 
+                y = 150.0 * y; 
+
                  break;
 
               case CIRCULAR:
                // angle
-               double angleDegrees = 360 * normalize((double)d.x, (double)minx, (double) maxx);
+               double angleDegrees = 360 * normalize(x, minx,  maxx);
                System.out.println("in degrees: "+angleDegrees);
                
                double angleRadians = PI_2 * Math.toRadians(angleDegrees);
                System.out.println("in radians: "+Math.toRadians(angleDegrees));
 
                // radius: 100
-               double radius = 200 * normalize((double)d.y, (double)miny, (double) maxy);
+               double radius = 2000 * normalize(y, miny,maxy);
 
                 x = radius * Math.cos(angleRadians); 
                 y = radius * Math.sin(angleRadians); 
@@ -248,30 +248,34 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
     private void firstWalk(Node v, int num) {
         //System.out.println("calling firstWalk on " + v.getId());
-        HierarchicalTreeNodeLayoutData data = v.getNodeData().getLayoutData();
-        data.number = num;
-        if (data.children.length == 0) {
+        HierarchicalTreeNodeLayoutData vp = getLayoutData(v);
+        vp.number = num;
+        if (vp.children.length == 0) {
             //System.out.println("is a leaf");
-            data.prelim = 0;
+            vp.prelim = 0;
+            //Node leftSibling = getLeftSibling(v);
+            //if (leftSibling != null) {
+            //    vp.prelim = getLayoutData(leftSibling).prelim + spacing(leftSibling, v);
+            //}
+            
         } else {
-            Node defaultAncestor = data.children[0];
+            Node defaultAncestor = vp.children[0];
             int i = 0;
-            for (Node w : data.children) {
+            for (Node w : vp.children) {
                 firstWalk(w, i++);
                 defaultAncestor = apportion(w, defaultAncestor);
             }
             executeShifts(v);
-            HierarchicalTreeNodeLayoutData leftMostd = getLeftMost(data.children).getNodeData().getLayoutData();
-            HierarchicalTreeNodeLayoutData rightMostd = getRightMost(data.children).getNodeData().getLayoutData();
+            HierarchicalTreeNodeLayoutData leftMostd = getLeftMost(vp.children).getNodeData().getLayoutData();
+            HierarchicalTreeNodeLayoutData rightMostd = getRightMost(vp.children).getNodeData().getLayoutData();
             float midpoint = 0.5f * (leftMostd.prelim + rightMostd.prelim);
 
             Node leftSibling = getLeftSibling(v);
             if (leftSibling != null) {
-                HierarchicalTreeNodeLayoutData leftSiblingLayoutData = v.getNodeData().getLayoutData();
-                data.prelim = leftSiblingLayoutData.prelim + 10.0f;
-                data.modifier = data.prelim - midpoint;
+                vp.prelim = getLayoutData(leftSibling).prelim + spacing(v,leftSibling);
+                vp.modifier = vp.prelim - midpoint;
             } else {
-                data.prelim = midpoint;
+                vp.prelim = midpoint;
             }
         }
     }
@@ -366,11 +370,11 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
     private void executeShifts(Node v) {
         //System.out.println("executeShifts("+v.getId()+")");
-        Node[] children =  (( HierarchicalTreeNodeLayoutData) v.getNodeData().getLayoutData()).children;
+        Node[] children = getLayoutData(v).children;
         float shift = 0, change = 0;
         for (int i = children.length - 1; i > -1; i--) {
             Node w = children[i];
-            HierarchicalTreeNodeLayoutData wd = w.getNodeData().getLayoutData();
+            HierarchicalTreeNodeLayoutData wd = getLayoutData(w);
             wd.prelim += shift;
             wd.modifier += shift;
             change += wd.change;
@@ -383,7 +387,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
         if (v == null) {
             return false;
         }
-        HierarchicalTreeNodeLayoutData vd = v.getNodeData().getLayoutData();
+        HierarchicalTreeNodeLayoutData vd = getLayoutData(v);
         Node candidateParent = getParent(candidate);
         if (candidateParent == null) {
             return false;
@@ -409,11 +413,19 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
     private float spacing(Node vim, Node vip) {
 
-        return (getLayoutData(vim).parent == getLayoutData(vip).parent ? 1 : 2) / getLayoutData(vim).depth;
+        //return (getLayoutData(vim).parent == getLayoutData(vip).parent ? 1 : 2) / getLayoutData(vim).depth;
+        return 1.0f;
+    }
+    
+    public HierarchicalTreeNodeLayoutData getOrSetLayout(Node n, HierarchicalTreeNodeLayoutData data) {
+        if (n.getNodeData().getLayoutData() == null || !(n.getNodeData().getLayoutData() instanceof HierarchicalTreeNodeLayoutData)) {
+            n.getNodeData().setLayoutData(data);
+        }
+        return n.getNodeData().getLayoutData();
     }
     
     private HierarchicalTreeNodeLayoutData getLayoutData(Node n) {
-       return (HierarchicalTreeNodeLayoutData)n.getNodeData().getLayoutData();
+        return getOrSetLayout(n, new HierarchicalTreeNodeLayoutData());
     }
 
     private Node apportion(Node v, Node a) {
