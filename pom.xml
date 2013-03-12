@@ -742,6 +742,11 @@
                 <artifactId>ui-library-wrapper</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>treelayout-plugin</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -1264,5 +1269,6 @@
         <module>modules/Gleem</module>
         <module>modules/CoreLibraryWrapper</module>
         <module>modules/UILibraryWrapper</module>
+        <module>modules/TreeLayoutPlugin</module>
     </modules>
 </project>

@@ -58,36 +58,44 @@ public class TreeLayoutBuilder implements LayoutBuilder {
 
     private TreeLayoutUI ui = new TreeLayoutUI();
 
+    @Override
     public String getName() {
         return NbBundle.getMessage(TreeLayoutBuilder.class, "name");
     }
 
+    @Override
     public TreeLayout buildLayout() {
         return new TreeLayout(this);
     }
 
+    @Override
     public LayoutUI getUI() {
         return ui;
     }
 
     private static class TreeLayoutUI implements LayoutUI {
 
+        @Override
         public String getDescription() {
             return NbBundle.getMessage(TreeLayout.class, "description");
         }
 
+        @Override
         public Icon getIcon() {
             return null;
         }
 
+        @Override
         public JPanel getSimplePanel(Layout layout) {
             return null;
         }
 
+        @Override
         public int getQualityRank() {
             return 5; // the algorithm returns exact and reproducible results
         }
 
+        @Override
         public int getSpeedRank() {
             return 5; // the algorithm runs in linear time
         }

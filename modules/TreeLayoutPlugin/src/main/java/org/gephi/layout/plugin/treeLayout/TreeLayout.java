@@ -66,7 +66,6 @@ import org.gephi.graph.api.HierarchicalGraph;
 import org.gephi.graph.api.Node;
 import org.gephi.graph.api.NodeData;
 import org.gephi.graph.api.NodeIterable;
-import org.gephi.layout.plugin.AbstractLayout;
 import org.gephi.layout.spi.Layout;
 import org.gephi.layout.spi.LayoutBuilder;
 import org.gephi.layout.spi.LayoutProperty;
@@ -82,9 +81,8 @@ import org.openide.util.NbBundle;
  *
  * @author Juilan Bilcke
  */
-public class TreeLayout extends AbstractLayout implements Layout {
+public class TreeLayout extends AbstractTreeLayout {
 
-    private static double PI_2 = Math.PI * 2.0;
     //Graph
     private float minx = 0.0f;
     private float maxx = 0.0f;
@@ -101,10 +99,10 @@ public class TreeLayout extends AbstractLayout implements Layout {
     private Boolean continuous = false;
     private Double spacingCoefficient = 5.0;
     // current state
-    private boolean converged;
-    private Node root = null;
+
     // computed stats
     private int levels = 0;
+    
     private Comparator<Node> nodeComparator = new Comparator<Node>() {
         @Override
         public int compare(Node one, Node two) {
@@ -112,11 +110,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
         }
     };
 
-    public static <T> T[] concat(T[] first, T[] second) {
-        T[] result = Arrays.copyOf(first, first.length + second.length);
-        System.arraycopy(second, 0, result, first.length, second.length);
-        return result;
-    }
 
     public TreeLayout(LayoutBuilder layoutBuilder) {
         super(layoutBuilder);
@@ -127,7 +120,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     public void initAlgo() {
-        converged = false;
+        this.converged = false;
     }
 
     public int setupDepth(Node n, int depth) {
@@ -197,7 +190,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
             targetLayoutData.modifier = 0;
             targetLayoutData.ancestror = target;
             targetLayoutData.thread = root;
-            sourceLayoutData.children = concat(sourceLayoutData.children, new Node[]{target});
+            sourceLayoutData.children = DataUtils.concat(sourceLayoutData.children, new Node[]{target});
             // /!\ targetLayoutData.number will be initialized during firstWalk
             Arrays.sort(sourceLayoutData.children, nodeComparator);
         }
@@ -221,8 +214,8 @@ public class TreeLayout extends AbstractLayout implements Layout {
                 n.getNodeData().setY(new Float(this.height * d.y));
 
             } else {
-                double angle = Math.toRadians(360 * normalize(d.x, minx, maxx));
-                double r = (this.radius * ((this.autoResize) ? nodes.length : 1.0)) * normalize(d.y, miny, maxy);
+                double angle = Math.toRadians(360 * DataUtils.normalize(d.x, minx, maxx));
+                double r = (this.radius * ((this.autoResize) ? nodes.length : 1.0)) * DataUtils.normalize(d.y, miny, maxy);
                 n.getNodeData().setX(new Float(r * Math.cos(angle)));
                 n.getNodeData().setY(new Float(r * Math.sin(angle)));
             }
@@ -232,9 +225,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
         }
     }
 
-    private double normalize(double value, double min, double max) {
-        return (value - min) / (max - min);
-    }
 
     private void firstWalk(Node v, int num) {
         TreeData vp = getLayoutData(v);
@@ -456,10 +446,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     @Override
-    public boolean canAlgo() {
-        return !converged;
-    }
-
     public LayoutProperty[] getProperties() {
         List<LayoutProperty> properties = new ArrayList<LayoutProperty>();
         final String TREE_LAYOUT = "Tree Layout";
@@ -471,23 +457,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
                     TREE_LAYOUT,
                     "TreeLayout.root.name",
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.root.desc"),
-                    "getRoot", "setRoot"));
-        } catch (Exception e) {
-            //Exceptions.printStackTrace(e);
-            //System.out.println("couldn't find translation, using default branding");
-            try {
-                properties.add(LayoutProperty.createProperty(
-                        this, Integer.class,
-                        "Root id",
-                        TREE_LAYOUT,
-                        "TreeLayout.root.name",
-                        "Root node id",
-                        "getRoot", "setRoot"));
-            } catch (NoSuchMethodException ex) {
-                Exceptions.printStackTrace(ex);
-            }
-        }
-        try {
+                    "getRootId", "setRootId"));
             properties.add(LayoutProperty.createProperty(
                     this, Double.class,
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.spacing.name"),
@@ -495,23 +465,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
                     "TreeLayout.spacing.name",
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.spacing.desc"),
                     "getSpacingCoefficient", "setSpacingCoefficient"));
-        } catch (Exception e) {
-            //Exceptions.printStackTrace(e);
-            //System.out.println("couldn't find translation, using default branding");
-            try {
-                properties.add(LayoutProperty.createProperty(
-                        this, Double.class,
-                        "Spacing coefficient",
-                        TREE_LAYOUT,
-                        "TreeLayout.spacing.name",
-                        "Spacing coefficient",
-                        "getSpacingCoefficient", "setSpacingCoefficient"));
-            } catch (NoSuchMethodException ex) {
-                Exceptions.printStackTrace(ex);
-            }
-        }
-
-        try {
             properties.add(LayoutProperty.createProperty(
                     this, Double.class,
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.width.name"),
@@ -519,22 +472,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
                     "TreeLayout.width.name",
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.width.desc"),
                     "getWidth", "setWidth"));
-        } catch (Exception e) {
-            //Exceptions.printStackTrace(e);
-            //System.out.println("couldn't find translation, using default branding");
-            try {
-                properties.add(LayoutProperty.createProperty(
-                        this, Double.class,
-                        "Tree width",
-                        TREE_LAYOUT,
-                        "TreeLayout.width.name",
-                        "Tree width",
-                        "getWidth", "setWidth"));
-            } catch (NoSuchMethodException ex) {
-                Exceptions.printStackTrace(ex);
-            }
-        }
-        try {
             properties.add(LayoutProperty.createProperty(
                     this, Double.class,
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.height.name"),
@@ -542,22 +479,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
                     "TreeLayout.height.name",
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.height.desc"),
                     "getHeight", "setHeight"));
-        } catch (Exception e) {
-            //Exceptions.printStackTrace(e);
-            //System.out.println("couldn't find translation, using default branding");
-            try {
-                properties.add(LayoutProperty.createProperty(
-                        this, Double.class,
-                        "Tree height",
-                        TREE_LAYOUT,
-                        "TreeLayout.height.name",
-                        "Tree height",
-                        "getHeight", "setHeight"));
-            } catch (NoSuchMethodException ex) {
-                Exceptions.printStackTrace(ex);
-            }
-        }
-        try {
             properties.add(LayoutProperty.createProperty(
                     this, Boolean.class,
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.polar.name"),
@@ -565,23 +486,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
                     "TreeLayout.polar.name",
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.polar.desc"),
                     "getIsPolar", "setIsPolar"));
-        } catch (Exception e) {
-            //Exceptions.printStackTrace(e);
-            //System.out.println("couldn't find translation, using default branding");
-            try {
-                properties.add(LayoutProperty.createProperty(
-                        this, Boolean.class,
-                        "Polar projection",
-                        TREE_LAYOUT,
-                        "TreeLayout.polar.name",
-                        "Project the tree over a circle?",
-                        "getIsPolar", "setIsPolar"));
-            } catch (NoSuchMethodException ex) {
-                Exceptions.printStackTrace(ex);
-            }
-        }
-
-        try {
             properties.add(LayoutProperty.createProperty(
                     this, Double.class,
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.radius.name"),
@@ -589,23 +493,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
                     "TreeLayout.radius.name",
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.radius.desc"),
                     "getRadius", "setRadius"));
-        } catch (Exception e) {
-            //Exceptions.printStackTrace(e);
-            //System.out.println("couldn't find translation, using default branding");
-            try {
-                properties.add(LayoutProperty.createProperty(
-                        this, Double.class,
-                        "Radius",
-                        TREE_LAYOUT,
-                        "TreeLayout.radius.name",
-                        "Circle radius",
-                        "getRadius", "setRadius"));
-            } catch (NoSuchMethodException ex) {
-                Exceptions.printStackTrace(ex);
-            }
-        }
-
-        try {
             properties.add(LayoutProperty.createProperty(
                     this, Boolean.class,
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.continuous.name"),
@@ -618,6 +505,48 @@ public class TreeLayout extends AbstractLayout implements Layout {
             //System.out.println("couldn't find translation, using default branding");
             try {
                 properties.add(LayoutProperty.createProperty(
+                        this, Integer.class,
+                        "Root id",
+                        TREE_LAYOUT,
+                        "TreeLayout.root.name",
+                        "Root node id",
+                        "getRootId", "setRootId"));
+                properties.add(LayoutProperty.createProperty(
+                        this, Double.class,
+                        "Spacing coefficient",
+                        TREE_LAYOUT,
+                        "TreeLayout.spacing.name",
+                        "Spacing coefficient",
+                        "getSpacingCoefficient", "setSpacingCoefficient"));
+                properties.add(LayoutProperty.createProperty(
+                        this, Double.class,
+                        "Tree width",
+                        TREE_LAYOUT,
+                        "TreeLayout.width.name",
+                        "Tree width",
+                        "getWidth", "setWidth"));
+                properties.add(LayoutProperty.createProperty(
+                        this, Double.class,
+                        "Tree height",
+                        TREE_LAYOUT,
+                        "TreeLayout.height.name",
+                        "Tree height",
+                        "getHeight", "setHeight"));
+                properties.add(LayoutProperty.createProperty(
+                        this, Boolean.class,
+                        "Polar projection",
+                        TREE_LAYOUT,
+                        "TreeLayout.polar.name",
+                        "Project the tree over a circle?",
+                        "getIsPolar", "setIsPolar"));
+                properties.add(LayoutProperty.createProperty(
+                        this, Double.class,
+                        "Radius",
+                        TREE_LAYOUT,
+                        "TreeLayout.radius.name",
+                        "Circle radius",
+                        "getRadius", "setRadius"));
+                properties.add(LayoutProperty.createProperty(
                         this, Boolean.class,
                         "Continuous",
                         TREE_LAYOUT,
@@ -628,17 +557,16 @@ public class TreeLayout extends AbstractLayout implements Layout {
                 Exceptions.printStackTrace(ex);
             }
         }
-
-
+       
 
         return properties.toArray(new LayoutProperty[0]);
     }
 
-    public Integer getRoot() {
+    public Integer getRootId() {
         return rootId;
     }
 
-    public void setRoot(Integer rootId) {
+    public void setRootId(Integer rootId) {
         this.rootId = rootId;
     }
 
