@@ -60,7 +60,7 @@ public class TreeLayoutBuilder implements LayoutBuilder {
 
     @Override
     public String getName() {
-        return NbBundle.getMessage(TreeLayoutBuilder.class, "name");
+        return "Tree Layout";// NbBundle.getMessage(TreeLayoutBuilder.class, "name");
     }
 
     @Override
@@ -77,7 +77,7 @@ public class TreeLayoutBuilder implements LayoutBuilder {
 
         @Override
         public String getDescription() {
-            return NbBundle.getMessage(TreeLayout.class, "description");
+            return "Tree Layout"; //NbBundle.getMessage(TreeLayout.class, "description");
         }
 
         @Override
