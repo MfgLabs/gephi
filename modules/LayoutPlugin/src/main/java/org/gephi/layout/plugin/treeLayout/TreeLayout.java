@@ -46,16 +46,30 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.MissingResourceException;
+import org.gephi.data.attributes.api.AttributeColumn;
+import org.gephi.data.attributes.api.AttributeOrigin;
+import org.gephi.data.attributes.api.AttributeTable;
+import org.gephi.data.attributes.api.AttributeType;
+import org.gephi.data.attributes.api.Estimator;
+import org.gephi.data.attributes.type.Interval;
+import org.gephi.data.attributes.type.TimeInterval;
+import org.gephi.dynamic.api.DynamicController;
+import org.gephi.dynamic.api.DynamicGraph;
+import org.gephi.dynamic.api.DynamicModel;
 import org.gephi.graph.api.Edge;
+import org.gephi.graph.api.EdgeIterable;
 import org.gephi.graph.api.Graph;
+import org.gephi.graph.api.GraphModel;
 import org.gephi.graph.api.HierarchicalGraph;
 import org.gephi.graph.api.Node;
 import org.gephi.graph.api.NodeData;
+import org.gephi.graph.api.NodeIterable;
 import org.gephi.layout.plugin.AbstractLayout;
 import org.gephi.layout.spi.Layout;
 import org.gephi.layout.spi.LayoutBuilder;
 import org.gephi.layout.spi.LayoutProperty;
 import org.openide.util.Exceptions;
+import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
 /**
@@ -70,7 +84,9 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
     private static double PI_2 = Math.PI * 2.0;
     //Graph
-    protected HierarchicalGraph graph;
+
+    private GraphModel graphModel;
+
     private float minx = 0.0f;
     private float maxx = 0.0f;
     private float miny = 0.0f;
@@ -82,6 +98,10 @@ public class TreeLayout extends AbstractLayout implements Layout {
     private Boolean isPolar = false;
     private Double radius = 20.0;
     private Boolean autoResize = true;
+    private Boolean createDepthAttribute = false;
+    private Boolean continuous = false;
+    private Double spacingCoefficient = 5.0;
+    
     // current state
     private boolean converged;
     private Node root = null;
@@ -110,63 +130,8 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
     public void initAlgo() {
         converged = false;
-
-        this.graph = graphModel.getHierarchicalGraphVisible();
-        graph.readLock();
-
-        for (Node n : graph.getNodes()) {
-            getOrSetLayout(n, new TreeData());
-            if (n.getId() == rootId) {
-                root = n;
-            }
-        }
-        if (root == null) {
-            converged = true;
-            graph.readUnlock();
-            return;
-        }
-
-        // we first initialize modifiers, threads, and ancestrors
-        Edge[] edges = graph.getEdgesAndMetaEdges().toArray();
-
-        System.out.println("STEP 1. INITIALIZING.");
-        for (Edge E : edges) {
-            Node source = E.getSource();
-            Node target = E.getTarget();
-            //System.out.println(" - source: " + source.getId());
-            // System.out.println(" - target: " + target.getId());
-            //System.out.println("");
-            TreeData sourceLayoutData = getOrSetLayout(source, new TreeData());
-            TreeData targetLayoutData = getOrSetLayout(target, new TreeData());
-
-
-            // detect the direction using timestamps
-            //System.out.println("source timestamp:  " + source.getNodeData().getAttributes().getValue("timestamp"));
-            //System.out.println("target timestamp:  " + source.getNodeData().getAttributes().getValue("timestamp"));
-            // Long ts = (Long) source.getAttributes().getValue("timestamp");
-
-            targetLayoutData.parent = source;
-            targetLayoutData.modifier = 0;
-            targetLayoutData.ancestror = target;
-            targetLayoutData.thread = root;
-
-            Node[] newChild = {target};
-            sourceLayoutData.children = concat(sourceLayoutData.children, newChild);
-
-            // targetLayoutData.number is now incorrect -- will be corrected during firstWalk
-
-            Arrays.sort(sourceLayoutData.children, nodeComparator);
-
-        }
-
-        getLayoutData(root).thread = null;
-
-        System.out.println("root: " + root.getId());
-        //System.out.println("Setting depth for each nodes starting from root..");
-        levels = setupDepth(root, 0);
-        System.out.println("max depth: " + levels);
-        graph.readUnlock();
     }
+  
 
     public int setupDepth(Node n, int depth) {
         TreeData data = n.getNodeData().getLayoutData();
@@ -182,54 +147,77 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     public void goAlgo() {
-        this.graph = graphModel.getHierarchicalGraphVisible();
-        graph.readLock();
-        Node[] nodes = graph.getNodes().toArray();
-        Edge[] edges = graph.getEdgesAndMetaEdges().toArray();
+
+        DynamicController dynamicController = Lookup.getDefault().lookup(DynamicController.class);
+        DynamicModel dynamicModel = dynamicController.getModel();
+        boolean isDynamic = dynamicModel.isDynamicGraph();
+        Graph graph;
+        if ( isDynamic ) {
+            DynamicGraph dynamicGraph = dynamicModel.createDynamicGraph(graphModel.getGraph());
+            TimeInterval timeInt = dynamicModel.getVisibleInterval();
+            dynamicGraph.setInterval(timeInt);
+            // Presumably the graph at the given time interval
+            graph = dynamicGraph.getSnapshotGraph(timeInt.getLow(), timeInt.getHigh());
+            Estimator estimator = dynamicModel.getEstimator();
+            // Handy for converting DynamicDouble to appropriate primitive
+            Interval currentInt = new Interval(timeInt.getLow(), timeInt.getHigh());
+        } else {
+            graph = graphModel.getGraph();
+        }
+          
+        Node[] nodes = graph.getNodes().toArray(); // so .length etc.. can work
+        for (Node n : nodes) {
+            getLayoutData(n);
+            if (n.getId() == rootId) {
+                root = n;
+            }
+        }
+        if (root == null) {
+            System.out.println("Error no root node, borting Tree layout.");
+            if (continuous) converged = true;
+            return;
+        }
+
+        for (Edge edge : graph.getEdges()) {
+            Node source = edge.getSource();
+            Node target = edge.getTarget();
+            TreeData sourceLayoutData = getLayoutData(source);
+            TreeData targetLayoutData = getLayoutData(target);
+            targetLayoutData.parent = source;
+            targetLayoutData.modifier = 0;
+            targetLayoutData.ancestror = target;
+            targetLayoutData.thread = root;
+            sourceLayoutData.children = concat(sourceLayoutData.children,new Node[]{target});
+            // /!\ targetLayoutData.number will be initialized during firstWalk
+            Arrays.sort(sourceLayoutData.children, nodeComparator);
+        }
+        getLayoutData(root).thread = null;
+
+        System.out.println("root: " + root.getId());
+        levels = setupDepth(root, 0);
 
         firstWalk(root, 0);
         secondWalk(root, -getLayoutData(root).prelim);
 
-        System.out.println("minx = " + minx + ", miny = " + miny + ", maxx = " + maxx + ", maxy = " + maxy);
-
         for (Node n : nodes) {
             TreeData d = n.getNodeData().getLayoutData();
-
-            double x = d.x;
-            double y = d.y;
-
-            System.out.println("Node " + n.getId() + " x: " + normalize(d.x, minx, maxx) + ", y: " + normalize(d.y, miny, maxy));
-
             if (!isPolar) {
+                // minir adjustment for the root
                 if (n.getId() == rootId) {
-                    x = minx + (Math.abs(maxx - minx) * 0.5);
+                    double x = minx + (Math.abs(maxx - minx) * 0.5);
                     System.out.println("" + x + " = (" + maxx + " - " + minx + ") * 0.5 = (" + (maxx - minx) + ") * 0.5");
                 }
-                x = this.width * x;
-                y = this.height * y;
+                n.getNodeData().setX(new Float(this.width * d.x));
+                n.getNodeData().setY(new Float(this.height * d.y));
 
             } else {
-                // angle
-                double angleDegrees = 360 * normalize(x, minx, maxx);
-                System.out.println("in degrees: " + angleDegrees);
-
-                double angleRadians = Math.toRadians(angleDegrees);
-                System.out.println("in radians: " + Math.toRadians(angleDegrees));
-
-                // radius should be dependent on the number of nodes?
-                double r = (this.radius * ((this.autoResize) ? nodes.length : 1.0)) * normalize(y, miny, maxy);
-
-                x = r * Math.cos(angleRadians);
-                y = r * Math.sin(angleRadians);
-
+                double angle = Math.toRadians(360 * normalize(d.x, minx, maxx));
+                double r = (this.radius * ((this.autoResize) ? nodes.length : 1.0)) * normalize(d.y, miny, maxy);
+                n.getNodeData().setX(new Float(r * Math.cos(angle)));
+                n.getNodeData().setY(new Float(r * Math.sin(angle)));
             }
-            System.out.println("final x: " + x + ", y: " + y);
-            n.getNodeData().setX(new Float(x));
-            n.getNodeData().setY(new Float(y));
         }
-
-        graph.readUnlock();
-        converged = true;
+        if (continuous) converged = true;
     }
 
     private double normalize(double value, double min, double max) {
@@ -237,17 +225,14 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     private void firstWalk(Node v, int num) {
-        //System.out.println("calling firstWalk on " + v.getId());
         TreeData vp = getLayoutData(v);
-        vp.number = num;
+        vp.number = num; // todo create the attribute model?
         if (vp.children.length == 0) {
-            //System.out.println("is a leaf");
             vp.prelim = 0;
             Node leftSibling = getLeftSibling(v);
             if (leftSibling != null) {
                 vp.prelim = getLayoutData(leftSibling).prelim + spacing(leftSibling, v);
             }
-
         } else {
             Node defaultAncestor = vp.children[0];
             int i = 0;
@@ -259,7 +244,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
             TreeData leftMostd = getLeftMost(vp.children).getNodeData().getLayoutData();
             TreeData rightMostd = getRightMost(vp.children).getNodeData().getLayoutData();
             float midpoint = 0.5f * (leftMostd.prelim + rightMostd.prelim);
-
             Node leftSibling = getLeftSibling(v);
             if (leftSibling != null) {
                 vp.prelim = getLayoutData(leftSibling).prelim + spacing(v, leftSibling);
@@ -271,7 +255,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     private void secondWalk(Node v, float m) {
-        // System.out.println(" -> calling secondWalk on " + v.getId() + ", m is: " + m);
         TreeData vd = v.getNodeData().getLayoutData();
         vd.x = vd.prelim + m;
         vd.y = vd.depth;
@@ -287,13 +270,9 @@ public class TreeLayout extends AbstractLayout implements Layout {
         if (vd.y > maxy) {
             maxy = vd.y;
         }
-
-        //System.out.println("x = "+vd.x+ ", y = "+vd.y);
-
         for (Node child : vd.children) {
             secondWalk(child, m + vd.modifier);
         }
-
     }
 
     private Node getLeftSibling(Node v) {
@@ -337,36 +316,28 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     private Node getNextLeft(Node v) {
-        // System.out.println("getNextLeft(" + v.getId() + ")");
         Node leftMostChild = getLeftMost(v);
         Node res = (leftMostChild != null) ? leftMostChild : getLayoutData(v).thread;
         return (res.getId() == rootId) ? null : res;
     }
 
     private Node getNextRight(Node v) {
-        //System.out.println("getNextRight(" + v.getId() + ")");
         Node rightMostChild = getRightMost(v);
         Node res = (rightMostChild != null) ? rightMostChild : getLayoutData(v).thread;
         return (res.getId() == rootId) ? null : res;
     }
 
     private void moveSubtree(Node wm, Node wp, float shift) {
-        TreeData wmd = wm.getNodeData().getLayoutData();
-        TreeData wpd = wp.getNodeData().getLayoutData();
-        //System.out.println("moveSubtree(" + wm.getId() + ", " + wp.getId() + ", " + shift + ")");
-
-        float subtrees = wpd.number - wmd.number;
-        //System.out.println("subtrees: " + subtrees+ " = "+wpd.number + " - "+wmd.number);
-        wpd.change -= shift / subtrees;
+        TreeData wmd = getLayoutData(wm);
+        TreeData wpd = getLayoutData(wp);
+        wpd.change -= shift / (wpd.number - wmd.number);
         wpd.shift += shift;
-        wmd.change += shift / subtrees;
+        wmd.change += shift / (wpd.number - wmd.number);
         wpd.prelim += shift;
         wpd.modifier += shift;
-
     }
 
     private void executeShifts(Node v) {
-        //System.out.println("executeShifts("+v.getId()+")");
         Node[] children = getLayoutData(v).children;
         float shift = 0, change = 0;
         for (int i = children.length - 1; i > -1; i--) {
@@ -384,12 +355,12 @@ public class TreeLayout extends AbstractLayout implements Layout {
         if (v == null) {
             return false;
         }
-        TreeData vd = getLayoutData(v);
         Node candidateParent = getParent(candidate);
         if (candidateParent == null) {
             return false;
+        } else {
+            return (v.getId() == candidateParent.getId());
         }
-        return (v.getId() == candidateParent.getId());
     }
 
     private Node getParent(Node v) {
@@ -409,9 +380,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     private float spacing(Node vim, Node vip) {
-
-        return 5.0f * (getLayoutData(vim).parent == getLayoutData(vip).parent ? 2 : 1) / getLayoutData(vim).depth;
-        //return 0.2f;
+        return new Float(this.spacingCoefficient) * (getLayoutData(vim).parent == getLayoutData(vip).parent ? 2 : 1) / getLayoutData(vim).depth;
     }
 
     public TreeData getOrSetLayout(Node n, TreeData data) {
@@ -426,48 +395,33 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     private Node apportion(Node v, Node a) {
-
-        //System.out.println("  apportion(" + v.getId() + ")");
-
         if (getLeftSibling(v) != null) {
-
             Node vip = v;
             Node vop = v;
             Node vim = getLeftSibling(v);
             Node vom = getLeftMostSibling(vip);
-
             float sip = getLayoutData(vip).modifier;
             float sop = getLayoutData(vop).modifier;
             float sim = getLayoutData(vim).modifier;
             float som = getLayoutData(vom).modifier;
-
             int i = 0;
             while (getNextRight(vim) != null && getNextLeft(vip) != null) {
-
                 vim = getNextRight(vim);
                 vip = getNextLeft(vip);
                 vom = getNextLeft(vom);
                 vop = getNextRight(vop);
-
-                System.out.println("     -" + i++ + " vim: " + vim.getId() + "  vip: " + vip.getId() + ", vom: " + vom.getId() + ", vop: " + vop.getId());
-
                 getLayoutData(vop).ancestror = v;
-
-                // prefuse does -sip
                 float shift = (getLayoutData(vim).prelim + sim) - (getLayoutData(vip).prelim + sip) + spacing(vim, vip);
                 if (shift > 0) {
                     moveSubtree(getAncestor(vim, v, a), v, shift);
                     sip += shift;
                     sop += shift;
                 }
-
                 sim += getLayoutData(vim).modifier;
                 sip += getLayoutData(vip).modifier;
                 som += getLayoutData(vom).modifier;
                 sop += getLayoutData(vop).modifier;
-
             }
-
             if (getNextRight(vim) != null && getNextRight(vop) == null) {
                 getLayoutData(vop).thread = getNextRight(vim);
                 getLayoutData(vop).modifier += sim - sop;
@@ -478,13 +432,12 @@ public class TreeLayout extends AbstractLayout implements Layout {
                 a = v;
             }
         }
-
-
         return a;
     }
 
+    @Override
     public void endAlgo() {
-        for (Node n : graph.getNodes()) {
+        for (Node n : graphModel.getGraph().getNodes()) {
             n.getNodeData().setLayoutData(null);
         }
     }
@@ -517,6 +470,29 @@ public class TreeLayout extends AbstractLayout implements Layout {
                         "TreeLayout.root.name",
                         "Root node id",
                         "getRoot", "setRoot"));
+            } catch (NoSuchMethodException ex) {
+                Exceptions.printStackTrace(ex);
+            }
+        }
+        try {
+            properties.add(LayoutProperty.createProperty(
+                    this, Double.class,
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.spacing.name"),
+                    TREE_LAYOUT,
+                    "TreeLayout.spacing.name",
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.spacing.desc"),
+                    "getSpacingCoefficient", "setSpacingCoefficient"));
+        } catch (Exception e) {
+            //Exceptions.printStackTrace(e);
+            System.out.println("couldn't find translation, using default branding");
+            try {
+                properties.add(LayoutProperty.createProperty(
+                        this, Double.class,
+                        "Spacing coefficient",
+                        TREE_LAYOUT,
+                        "TreeLayout.spacing.name",
+                        "Spacing coefficient",
+                        "getSpacingCoefficient", "setSpacingCoefficient"));
             } catch (NoSuchMethodException ex) {
                 Exceptions.printStackTrace(ex);
             }
@@ -616,6 +592,30 @@ public class TreeLayout extends AbstractLayout implements Layout {
             }
         }
 
+        try {
+            properties.add(LayoutProperty.createProperty(
+                    this, Boolean.class,
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.continuous.name"),
+                    TREE_LAYOUT,
+                    "TreeLayout.continuous.name",
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.continuous.desc"),
+                    "getContinuous", "setContinuous"));
+        } catch (Exception e) {
+            //Exceptions.printStackTrace(e);
+            System.out.println("couldn't find translation, using default branding");
+            try {
+                properties.add(LayoutProperty.createProperty(
+                        this, Boolean.class,
+                        "Continuous",
+                        TREE_LAYOUT,
+                        "TreeLayout.continuous.name",
+                        "Continuous mode (realtime update)",
+                        "getContinuous", "setContinuous"));
+            } catch (NoSuchMethodException ex) {
+                Exceptions.printStackTrace(ex);
+            }
+        }
+
 
 
         return properties.toArray(new LayoutProperty[0]);
@@ -667,5 +667,29 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
     public void setAutoResize(Boolean autoResize) {
         this.autoResize = autoResize;
+    }
+    
+    public void setCreateDepthAttribute(Boolean createDepthAttribute) {
+         this.createDepthAttribute = createDepthAttribute;
+    }
+    
+    public Boolean getCreateDepthAttribute() {
+        return this.createDepthAttribute;
+    }
+    
+    public void setContinuous(Boolean continuous) {
+         this.continuous = continuous;
+    }
+    
+    public Boolean getContinuous() {
+        return this.continuous;
+    }
+    
+    public void setSpacingCoefficient(Double spacingCoefficient) {
+        this.spacingCoefficient = spacingCoefficient;
+    }
+    
+    public Double getSpacingCoefficient() {
+        return this.spacingCoefficient;
     }
 }
