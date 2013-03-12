@@ -15,7 +15,6 @@ public class TreeData implements LayoutData {
     public float x = 0;
     public float y = 0;
 
-    public Node parent = null;
     public int number = 0;
     public Node[] children = {};
 
@@ -29,7 +28,4 @@ public class TreeData implements LayoutData {
     
     public int depth = 0;
     
-
-
-
 }

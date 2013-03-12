@@ -56,9 +56,11 @@ import org.gephi.data.attributes.type.TimeInterval;
 import org.gephi.dynamic.api.DynamicController;
 import org.gephi.dynamic.api.DynamicGraph;
 import org.gephi.dynamic.api.DynamicModel;
+import org.gephi.graph.api.DirectedGraph;
 import org.gephi.graph.api.Edge;
 import org.gephi.graph.api.EdgeIterable;
 import org.gephi.graph.api.Graph;
+import org.gephi.graph.api.GraphController;
 import org.gephi.graph.api.GraphModel;
 import org.gephi.graph.api.HierarchicalGraph;
 import org.gephi.graph.api.Node;
@@ -84,9 +86,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
     private static double PI_2 = Math.PI * 2.0;
     //Graph
-
-    private GraphModel graphModel;
-
     private float minx = 0.0f;
     private float maxx = 0.0f;
     private float miny = 0.0f;
@@ -101,7 +100,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
     private Boolean createDepthAttribute = false;
     private Boolean continuous = false;
     private Double spacingCoefficient = 5.0;
-    
     // current state
     private boolean converged;
     private Node root = null;
@@ -131,7 +129,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
     public void initAlgo() {
         converged = false;
     }
-  
 
     public int setupDepth(Node n, int depth) {
         TreeData data = n.getNodeData().getLayoutData();
@@ -148,23 +145,35 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
     public void goAlgo() {
 
-        DynamicController dynamicController = Lookup.getDefault().lookup(DynamicController.class);
-        DynamicModel dynamicModel = dynamicController.getModel();
-        boolean isDynamic = dynamicModel.isDynamicGraph();
-        Graph graph;
-        if ( isDynamic ) {
-            DynamicGraph dynamicGraph = dynamicModel.createDynamicGraph(graphModel.getGraph());
-            TimeInterval timeInt = dynamicModel.getVisibleInterval();
-            dynamicGraph.setInterval(timeInt);
-            // Presumably the graph at the given time interval
-            graph = dynamicGraph.getSnapshotGraph(timeInt.getLow(), timeInt.getHigh());
-            Estimator estimator = dynamicModel.getEstimator();
-            // Handy for converting DynamicDouble to appropriate primitive
-            Interval currentInt = new Interval(timeInt.getLow(), timeInt.getHigh());
-        } else {
-            graph = graphModel.getGraph();
+        GraphController graphController = Lookup.getDefault().lookup(GraphController.class);
+        graphModel = graphController.getModel();
+
+        if (graphModel == null) {
+            System.out.println("Error, graph model is null");
+            if (!continuous) {
+                converged = true;
+            }
+            return;
         }
-          
+        DirectedGraph graph = graphModel.getDirectedGraphVisible();
+
+        /*        
+         DynamicController dynamicController = Lookup.getDefault().lookup(DynamicController.class);
+         DynamicModel dynamicModel = dynamicController.getModel(); 
+         boolean isDynamic = dynamicModel.isDynamicGraph();
+         if ( isDynamic && dynamicModel != null) {
+         DynamicGraph dynamicGraph = dynamicModel.createDynamicGraph(graph);
+         TimeInterval timeInt = dynamicModel.getVisibleInterval();
+         dynamicGraph.setInterval(timeInt);
+         // Presumably the graph at the given time interval
+         graph = dynamicGraph.getSnapshotGraph(timeInt.getLow(), timeInt.getHigh());
+         Estimator estimator = dynamicModel.getEstimator();
+         // Handy for converting DynamicDouble to appropriate primitive
+         Interval currentInt = new Interval(timeInt.getLow(), timeInt.getHigh());
+         } else {
+         graph = graphModel.getGraph();
+         }*/
+
         Node[] nodes = graph.getNodes().toArray(); // so .length etc.. can work
         for (Node n : nodes) {
             getLayoutData(n);
@@ -174,7 +183,9 @@ public class TreeLayout extends AbstractLayout implements Layout {
         }
         if (root == null) {
             System.out.println("Error no root node, borting Tree layout.");
-            if (continuous) converged = true;
+            if (!continuous) {
+                converged = true;
+            }
             return;
         }
 
@@ -183,11 +194,10 @@ public class TreeLayout extends AbstractLayout implements Layout {
             Node target = edge.getTarget();
             TreeData sourceLayoutData = getLayoutData(source);
             TreeData targetLayoutData = getLayoutData(target);
-            targetLayoutData.parent = source;
             targetLayoutData.modifier = 0;
             targetLayoutData.ancestror = target;
             targetLayoutData.thread = root;
-            sourceLayoutData.children = concat(sourceLayoutData.children,new Node[]{target});
+            sourceLayoutData.children = concat(sourceLayoutData.children, new Node[]{target});
             // /!\ targetLayoutData.number will be initialized during firstWalk
             Arrays.sort(sourceLayoutData.children, nodeComparator);
         }
@@ -217,7 +227,9 @@ public class TreeLayout extends AbstractLayout implements Layout {
                 n.getNodeData().setY(new Float(r * Math.sin(angle)));
             }
         }
-        if (continuous) converged = true;
+        if (!continuous) {
+            converged = true;
+        }
     }
 
     private double normalize(double value, double min, double max) {
@@ -277,10 +289,10 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
     private Node getLeftSibling(Node v) {
         TreeData vd = v.getNodeData().getLayoutData();
-        if (vd.parent != null) {
-            TreeData pd = vd.parent.getNodeData().getLayoutData();
+        Node parent = getParent(v);
+        if (parent != null) {
             Node leftSibling = null;
-            for (Node w : pd.children) {
+            for (Node w : getLayoutData(parent).children) {
                 if (w.getId() == v.getId()) {
                     if (leftSibling != null) {
                         return leftSibling;
@@ -311,7 +323,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     private Node getLeftMostSibling(Node n) {
-        Node parent = getLayoutData(n).parent;
+        Node parent = getParent(n);
         return (parent != null) ? getLeftMost(parent) : n;
     }
 
@@ -366,9 +378,10 @@ public class TreeLayout extends AbstractLayout implements Layout {
     private Node getParent(Node v) {
         if (v == null) {
             return null;
+        } else {
+            Node[] parents = graphModel.getDirectedGraphVisible().getPredecessors(v).toArray();
+            return (parents.length == 0) ? null : parents[0];
         }
-        TreeData vd = v.getNodeData().getLayoutData();
-        return vd.parent;
     }
 
     private Node getAncestor(Node vim, Node v, Node defaultAncestror) {
@@ -380,7 +393,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     private float spacing(Node vim, Node vip) {
-        return new Float(this.spacingCoefficient) * (getLayoutData(vim).parent == getLayoutData(vip).parent ? 2 : 1) / getLayoutData(vim).depth;
+        return new Float(this.spacingCoefficient) * (getParent(vim) == getParent(vip) ? 2 : 1) / getLayoutData(vim).depth;
     }
 
     public TreeData getOrSetLayout(Node n, TreeData data) {
@@ -461,7 +474,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
                     "getRoot", "setRoot"));
         } catch (Exception e) {
             //Exceptions.printStackTrace(e);
-            System.out.println("couldn't find translation, using default branding");
+            //System.out.println("couldn't find translation, using default branding");
             try {
                 properties.add(LayoutProperty.createProperty(
                         this, Integer.class,
@@ -484,7 +497,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
                     "getSpacingCoefficient", "setSpacingCoefficient"));
         } catch (Exception e) {
             //Exceptions.printStackTrace(e);
-            System.out.println("couldn't find translation, using default branding");
+            //System.out.println("couldn't find translation, using default branding");
             try {
                 properties.add(LayoutProperty.createProperty(
                         this, Double.class,
@@ -508,7 +521,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
                     "getWidth", "setWidth"));
         } catch (Exception e) {
             //Exceptions.printStackTrace(e);
-            System.out.println("couldn't find translation, using default branding");
+            //System.out.println("couldn't find translation, using default branding");
             try {
                 properties.add(LayoutProperty.createProperty(
                         this, Double.class,
@@ -531,7 +544,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
                     "getHeight", "setHeight"));
         } catch (Exception e) {
             //Exceptions.printStackTrace(e);
-            System.out.println("couldn't find translation, using default branding");
+            //System.out.println("couldn't find translation, using default branding");
             try {
                 properties.add(LayoutProperty.createProperty(
                         this, Double.class,
@@ -554,7 +567,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
                     "getIsPolar", "setIsPolar"));
         } catch (Exception e) {
             //Exceptions.printStackTrace(e);
-            System.out.println("couldn't find translation, using default branding");
+            //System.out.println("couldn't find translation, using default branding");
             try {
                 properties.add(LayoutProperty.createProperty(
                         this, Boolean.class,
@@ -578,7 +591,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
                     "getRadius", "setRadius"));
         } catch (Exception e) {
             //Exceptions.printStackTrace(e);
-            System.out.println("couldn't find translation, using default branding");
+            //System.out.println("couldn't find translation, using default branding");
             try {
                 properties.add(LayoutProperty.createProperty(
                         this, Double.class,
@@ -602,7 +615,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
                     "getContinuous", "setContinuous"));
         } catch (Exception e) {
             //Exceptions.printStackTrace(e);
-            System.out.println("couldn't find translation, using default branding");
+            //System.out.println("couldn't find translation, using default branding");
             try {
                 properties.add(LayoutProperty.createProperty(
                         this, Boolean.class,
@@ -668,27 +681,27 @@ public class TreeLayout extends AbstractLayout implements Layout {
     public void setAutoResize(Boolean autoResize) {
         this.autoResize = autoResize;
     }
-    
+
     public void setCreateDepthAttribute(Boolean createDepthAttribute) {
-         this.createDepthAttribute = createDepthAttribute;
+        this.createDepthAttribute = createDepthAttribute;
     }
-    
+
     public Boolean getCreateDepthAttribute() {
         return this.createDepthAttribute;
     }
-    
+
     public void setContinuous(Boolean continuous) {
-         this.continuous = continuous;
+        this.continuous = continuous;
     }
-    
+
     public Boolean getContinuous() {
         return this.continuous;
     }
-    
+
     public void setSpacingCoefficient(Double spacingCoefficient) {
         this.spacingCoefficient = spacingCoefficient;
     }
-    
+
     public Double getSpacingCoefficient() {
         return this.spacingCoefficient;
     }
