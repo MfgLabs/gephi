@@ -23,8 +23,8 @@ msgstr "Tree Layout"
 msgid "description"
 msgstr "Implementation of "Improving Walker's Algorithm to Run in Linear Time" by C. Buchheim, M. Jünger, S. Leipert"
 
-msgid "treeLayout.root.name"
+msgid "TreeLayout.root.name"
 msgstr "Root node"
 
-msgid "treeLayout.root.desc"
+msgid "TreeLayout.root.desc"
 msgstr "Root node id"

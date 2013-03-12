@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.MissingResourceException;
 import org.gephi.graph.api.Edge;
 import org.gephi.graph.api.Graph;
 import org.gephi.graph.api.HierarchicalGraph;
@@ -54,6 +55,7 @@ import org.gephi.layout.plugin.AbstractLayout;
 import org.gephi.layout.spi.Layout;
 import org.gephi.layout.spi.LayoutBuilder;
 import org.gephi.layout.spi.LayoutProperty;
+import org.openide.util.Exceptions;
 import org.openide.util.NbBundle;
 
 /**
@@ -66,24 +68,20 @@ import org.openide.util.NbBundle;
  */
 public class TreeLayout extends AbstractLayout implements Layout {
 
-    public enum Orientation {
-        LEFT, TOP, RIGHT, BOTTOM, CIRCULAR
-    };
-    
-    private Orientation orientation = Orientation.TOP;
-    
     private static double PI_2 = Math.PI * 2.0;
-    
     //Graph
     protected HierarchicalGraph graph;
-    
     private float minx = 0.0f;
     private float maxx = 0.0f;
     private float miny = 0.0f;
     private float maxy = 0.0f;
-    
     //Properties
-    private int rootId = 1;
+    private Integer rootId = 1;
+    private Double width = 30.0;
+    private Double height = 400.0;
+    private Boolean isPolar = false;
+    private Double radius = 20.0;
+    private Boolean autoResize = true;
     // current state
     private boolean converged;
     private Node root = null;
@@ -110,7 +108,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
         rootId = 1;
     }
 
-
     public void initAlgo() {
         converged = false;
 
@@ -118,10 +115,15 @@ public class TreeLayout extends AbstractLayout implements Layout {
         graph.readLock();
 
         for (Node n : graph.getNodes()) {
-            getOrSetLayout(n, new HierarchicalTreeNodeLayoutData());
+            getOrSetLayout(n, new TreeData());
             if (n.getId() == rootId) {
                 root = n;
             }
+        }
+        if (root == null) {
+            converged = true;
+            graph.readUnlock();
+            return;
         }
 
         // we first initialize modifiers, threads, and ancestrors
@@ -132,10 +134,10 @@ public class TreeLayout extends AbstractLayout implements Layout {
             Node source = E.getSource();
             Node target = E.getTarget();
             //System.out.println(" - source: " + source.getId());
-           // System.out.println(" - target: " + target.getId());
+            // System.out.println(" - target: " + target.getId());
             //System.out.println("");
-            HierarchicalTreeNodeLayoutData sourceLayoutData = getOrSetLayout(source, new HierarchicalTreeNodeLayoutData());
-            HierarchicalTreeNodeLayoutData targetLayoutData = getOrSetLayout(target, new HierarchicalTreeNodeLayoutData());
+            TreeData sourceLayoutData = getOrSetLayout(source, new TreeData());
+            TreeData targetLayoutData = getOrSetLayout(target, new TreeData());
 
 
             // detect the direction using timestamps
@@ -151,14 +153,14 @@ public class TreeLayout extends AbstractLayout implements Layout {
             Node[] newChild = {target};
             sourceLayoutData.children = concat(sourceLayoutData.children, newChild);
 
-           // targetLayoutData.number is now incorrect -- will be corrected during firstWalk
-            
+            // targetLayoutData.number is now incorrect -- will be corrected during firstWalk
+
             Arrays.sort(sourceLayoutData.children, nodeComparator);
 
         }
 
         getLayoutData(root).thread = null;
-        
+
         System.out.println("root: " + root.getId());
         //System.out.println("Setting depth for each nodes starting from root..");
         levels = setupDepth(root, 0);
@@ -167,7 +169,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     public int setupDepth(Node n, int depth) {
-        HierarchicalTreeNodeLayoutData data = n.getNodeData().getLayoutData();
+        TreeData data = n.getNodeData().getLayoutData();
         data.depth = depth;
         int max = depth;
         for (Node child : data.children) {
@@ -178,7 +180,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
         }
         return max;
     }
-    
 
     public void goAlgo() {
         this.graph = graphModel.getHierarchicalGraphVisible();
@@ -186,78 +187,67 @@ public class TreeLayout extends AbstractLayout implements Layout {
         Node[] nodes = graph.getNodes().toArray();
         Edge[] edges = graph.getEdgesAndMetaEdges().toArray();
 
-        HierarchicalTreeNodeLayoutData rootLayoutData = root.getNodeData().getLayoutData();
-        System.out.println("STEP 2. CALLING FIRST WALK");
         firstWalk(root, 0);
+        secondWalk(root, -getLayoutData(root).prelim);
 
-        System.out.println("STEP 3. CALLING SECOND WALK");
-        secondWalk(root, -rootLayoutData.prelim);
+        System.out.println("minx = " + minx + ", miny = " + miny + ", maxx = " + maxx + ", maxy = " + maxy);
 
-        System.out.println("minx = "+minx+ ", miny = "+miny+", maxx = "+maxx + ", maxy = "+maxy);
+        for (Node n : nodes) {
+            TreeData d = n.getNodeData().getLayoutData();
 
-         for (Node n : nodes)  {    
-          HierarchicalTreeNodeLayoutData d = n.getNodeData().getLayoutData();
-          
-         double x = d.x;
-         double y = d.y; 
-          
+            double x = d.x;
+            double y = d.y;
 
-          System.out.println("Node "+n.getId()+" x: "+normalize(d.x, minx, maxx) + ", y: "+normalize(d.y, miny, maxy) );
-          
-          switch(orientation){
-              case TOP:
+            System.out.println("Node " + n.getId() + " x: " + normalize(d.x, minx, maxx) + ", y: " + normalize(d.y, miny, maxy));
 
+            if (!isPolar) {
                 if (n.getId() == rootId) {
-                    x = (maxx - minx) * 0.5;
-                    System.out.println(""+x+" = ("+minx+" - "+maxx+") * 0.5 = ("+(minx - maxx)+") * 0.5");
+                    x = minx + (Math.abs(maxx - minx) * 0.5);
+                    System.out.println("" + x + " = (" + maxx + " - " + minx + ") * 0.5 = (" + (maxx - minx) + ") * 0.5");
                 }
-                x = 30.0 * x; 
-                y = 150.0 * y; 
+                x = this.width * x;
+                y = this.height * y;
 
-                 break;
+            } else {
+                // angle
+                double angleDegrees = 360 * normalize(x, minx, maxx);
+                System.out.println("in degrees: " + angleDegrees);
 
-              case CIRCULAR:
-               // angle
-               double angleDegrees = 360 * normalize(x, minx,  maxx);
-               System.out.println("in degrees: "+angleDegrees);
-               
-               double angleRadians = PI_2 * Math.toRadians(angleDegrees);
-               System.out.println("in radians: "+Math.toRadians(angleDegrees));
+                double angleRadians = Math.toRadians(angleDegrees);
+                System.out.println("in radians: " + Math.toRadians(angleDegrees));
 
-               // radius: 100
-               double radius = 2000 * normalize(y, miny,maxy);
+                // radius should be dependent on the number of nodes?
+                double r = (this.radius * ((this.autoResize) ? nodes.length : 1.0)) * normalize(y, miny, maxy);
 
-                x = radius * Math.cos(angleRadians); 
-                y = radius * Math.sin(angleRadians); 
-                 break;
-                  
-               default:
-                  break;
-          }
-           System.out.println("final x: "+x+", y: "+y);     
-           n.getNodeData().setX(new Float(x));
-           n.getNodeData().setY(new Float(y));
-         }
-        
+                x = r * Math.cos(angleRadians);
+                y = r * Math.sin(angleRadians);
+
+            }
+            System.out.println("final x: " + x + ", y: " + y);
+            n.getNodeData().setX(new Float(x));
+            n.getNodeData().setY(new Float(y));
+        }
+
         graph.readUnlock();
         converged = true;
     }
+
     private double normalize(double value, double min, double max) {
         return (value - min) / (max - min);
     }
 
     private void firstWalk(Node v, int num) {
         //System.out.println("calling firstWalk on " + v.getId());
-        HierarchicalTreeNodeLayoutData vp = getLayoutData(v);
+        TreeData vp = getLayoutData(v);
         vp.number = num;
         if (vp.children.length == 0) {
             //System.out.println("is a leaf");
             vp.prelim = 0;
-            //Node leftSibling = getLeftSibling(v);
-            //if (leftSibling != null) {
-            //    vp.prelim = getLayoutData(leftSibling).prelim + spacing(leftSibling, v);
-            //}
-            
+            Node leftSibling = getLeftSibling(v);
+            if (leftSibling != null) {
+                vp.prelim = getLayoutData(leftSibling).prelim + spacing(leftSibling, v);
+            }
+
         } else {
             Node defaultAncestor = vp.children[0];
             int i = 0;
@@ -266,13 +256,13 @@ public class TreeLayout extends AbstractLayout implements Layout {
                 defaultAncestor = apportion(w, defaultAncestor);
             }
             executeShifts(v);
-            HierarchicalTreeNodeLayoutData leftMostd = getLeftMost(vp.children).getNodeData().getLayoutData();
-            HierarchicalTreeNodeLayoutData rightMostd = getRightMost(vp.children).getNodeData().getLayoutData();
+            TreeData leftMostd = getLeftMost(vp.children).getNodeData().getLayoutData();
+            TreeData rightMostd = getRightMost(vp.children).getNodeData().getLayoutData();
             float midpoint = 0.5f * (leftMostd.prelim + rightMostd.prelim);
 
             Node leftSibling = getLeftSibling(v);
             if (leftSibling != null) {
-                vp.prelim = getLayoutData(leftSibling).prelim + spacing(v,leftSibling);
+                vp.prelim = getLayoutData(leftSibling).prelim + spacing(v, leftSibling);
                 vp.modifier = vp.prelim - midpoint;
             } else {
                 vp.prelim = midpoint;
@@ -281,15 +271,23 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     private void secondWalk(Node v, float m) {
-       // System.out.println(" -> calling secondWalk on " + v.getId() + ", m is: " + m);
-        HierarchicalTreeNodeLayoutData vd = v.getNodeData().getLayoutData();
+        // System.out.println(" -> calling secondWalk on " + v.getId() + ", m is: " + m);
+        TreeData vd = v.getNodeData().getLayoutData();
         vd.x = vd.prelim + m;
         vd.y = vd.depth;
-        if (vd.x < minx) minx = vd.x;
-        if (vd.y < miny) miny = vd.y;
-        if (vd.x > maxx) maxx = vd.x;
-        if (vd.y > maxy) maxy = vd.y;
-        
+        if (vd.x < minx) {
+            minx = vd.x;
+        }
+        if (vd.y < miny) {
+            miny = vd.y;
+        }
+        if (vd.x > maxx) {
+            maxx = vd.x;
+        }
+        if (vd.y > maxy) {
+            maxy = vd.y;
+        }
+
         //System.out.println("x = "+vd.x+ ", y = "+vd.y);
 
         for (Node child : vd.children) {
@@ -299,9 +297,9 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     private Node getLeftSibling(Node v) {
-        HierarchicalTreeNodeLayoutData vd = v.getNodeData().getLayoutData();
+        TreeData vd = v.getNodeData().getLayoutData();
         if (vd.parent != null) {
-            HierarchicalTreeNodeLayoutData pd = vd.parent.getNodeData().getLayoutData();
+            TreeData pd = vd.parent.getNodeData().getLayoutData();
             Node leftSibling = null;
             for (Node w : pd.children) {
                 if (w.getId() == v.getId()) {
@@ -316,7 +314,6 @@ public class TreeLayout extends AbstractLayout implements Layout {
         }
         return null;
     }
-
 
     private Node getLeftMost(Node[] nodes) {
         return (nodes.length > 0) ? nodes[0] : null;
@@ -340,7 +337,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     private Node getNextLeft(Node v) {
-       // System.out.println("getNextLeft(" + v.getId() + ")");
+        // System.out.println("getNextLeft(" + v.getId() + ")");
         Node leftMostChild = getLeftMost(v);
         Node res = (leftMostChild != null) ? leftMostChild : getLayoutData(v).thread;
         return (res.getId() == rootId) ? null : res;
@@ -354,8 +351,8 @@ public class TreeLayout extends AbstractLayout implements Layout {
     }
 
     private void moveSubtree(Node wm, Node wp, float shift) {
-        HierarchicalTreeNodeLayoutData wmd = wm.getNodeData().getLayoutData();
-        HierarchicalTreeNodeLayoutData wpd = wp.getNodeData().getLayoutData();
+        TreeData wmd = wm.getNodeData().getLayoutData();
+        TreeData wpd = wp.getNodeData().getLayoutData();
         //System.out.println("moveSubtree(" + wm.getId() + ", " + wp.getId() + ", " + shift + ")");
 
         float subtrees = wpd.number - wmd.number;
@@ -374,7 +371,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
         float shift = 0, change = 0;
         for (int i = children.length - 1; i > -1; i--) {
             Node w = children[i];
-            HierarchicalTreeNodeLayoutData wd = getLayoutData(w);
+            TreeData wd = getLayoutData(w);
             wd.prelim += shift;
             wd.modifier += shift;
             change += wd.change;
@@ -387,7 +384,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
         if (v == null) {
             return false;
         }
-        HierarchicalTreeNodeLayoutData vd = getLayoutData(v);
+        TreeData vd = getLayoutData(v);
         Node candidateParent = getParent(candidate);
         if (candidateParent == null) {
             return false;
@@ -399,7 +396,7 @@ public class TreeLayout extends AbstractLayout implements Layout {
         if (v == null) {
             return null;
         }
-        HierarchicalTreeNodeLayoutData vd = v.getNodeData().getLayoutData();
+        TreeData vd = v.getNodeData().getLayoutData();
         return vd.parent;
     }
 
@@ -413,19 +410,19 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
     private float spacing(Node vim, Node vip) {
 
-        //return (getLayoutData(vim).parent == getLayoutData(vip).parent ? 1 : 2) / getLayoutData(vim).depth;
-        return 1.0f;
+        return 5.0f * (getLayoutData(vim).parent == getLayoutData(vip).parent ? 2 : 1) / getLayoutData(vim).depth;
+        //return 0.2f;
     }
-    
-    public HierarchicalTreeNodeLayoutData getOrSetLayout(Node n, HierarchicalTreeNodeLayoutData data) {
-        if (n.getNodeData().getLayoutData() == null || !(n.getNodeData().getLayoutData() instanceof HierarchicalTreeNodeLayoutData)) {
+
+    public TreeData getOrSetLayout(Node n, TreeData data) {
+        if (n.getNodeData().getLayoutData() == null || !(n.getNodeData().getLayoutData() instanceof TreeData)) {
             n.getNodeData().setLayoutData(data);
         }
         return n.getNodeData().getLayoutData();
     }
-    
-    private HierarchicalTreeNodeLayoutData getLayoutData(Node n) {
-        return getOrSetLayout(n, new HierarchicalTreeNodeLayoutData());
+
+    private TreeData getLayoutData(Node n) {
+        return getOrSetLayout(n, new TreeData());
     }
 
     private Node apportion(Node v, Node a) {
@@ -446,13 +443,13 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
             int i = 0;
             while (getNextRight(vim) != null && getNextLeft(vip) != null) {
-               
+
                 vim = getNextRight(vim);
                 vip = getNextLeft(vip);
                 vom = getNextLeft(vom);
                 vop = getNextRight(vop);
-                
-                System.out.println("     -" + i++ + " vim: " + vim.getId() + "  vip: " + vip.getId()+ ", vom: "+vom.getId()+", vop: "+vop.getId());
+
+                System.out.println("     -" + i++ + " vim: " + vim.getId() + "  vip: " + vip.getId() + ", vom: " + vom.getId() + ", vop: " + vop.getId());
 
                 getLayoutData(vop).ancestror = v;
 
@@ -504,14 +501,122 @@ public class TreeLayout extends AbstractLayout implements Layout {
         try {
             properties.add(LayoutProperty.createProperty(
                     this, Integer.class,
-                    NbBundle.getMessage(TreeLayout.class, "treeLayout.root.name"),
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.root.name"),
                     TREE_LAYOUT,
-                    "treeLayout.root.name",
-                    NbBundle.getMessage(TreeLayout.class, "treeLayout.root.desc"),
+                    "TreeLayout.root.name",
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.root.desc"),
                     "getRoot", "setRoot"));
         } catch (Exception e) {
-            e.printStackTrace();
+            //Exceptions.printStackTrace(e);
+            System.out.println("couldn't find translation, using default branding");
+            try {
+                properties.add(LayoutProperty.createProperty(
+                        this, Integer.class,
+                        "Root id",
+                        TREE_LAYOUT,
+                        "TreeLayout.root.name",
+                        "Root node id",
+                        "getRoot", "setRoot"));
+            } catch (NoSuchMethodException ex) {
+                Exceptions.printStackTrace(ex);
+            }
         }
+
+        try {
+            properties.add(LayoutProperty.createProperty(
+                    this, Double.class,
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.width.name"),
+                    TREE_LAYOUT,
+                    "TreeLayout.width.name",
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.width.desc"),
+                    "getWidth", "setWidth"));
+        } catch (Exception e) {
+            //Exceptions.printStackTrace(e);
+            System.out.println("couldn't find translation, using default branding");
+            try {
+                properties.add(LayoutProperty.createProperty(
+                        this, Double.class,
+                        "Tree width",
+                        TREE_LAYOUT,
+                        "TreeLayout.width.name",
+                        "Tree width",
+                        "getWidth", "setWidth"));
+            } catch (NoSuchMethodException ex) {
+                Exceptions.printStackTrace(ex);
+            }
+        }
+        try {
+            properties.add(LayoutProperty.createProperty(
+                    this, Double.class,
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.height.name"),
+                    TREE_LAYOUT,
+                    "TreeLayout.height.name",
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.height.desc"),
+                    "getHeight", "setHeight"));
+        } catch (Exception e) {
+            //Exceptions.printStackTrace(e);
+            System.out.println("couldn't find translation, using default branding");
+            try {
+                properties.add(LayoutProperty.createProperty(
+                        this, Double.class,
+                        "Tree height",
+                        TREE_LAYOUT,
+                        "TreeLayout.height.name",
+                        "Tree height",
+                        "getHeight", "setHeight"));
+            } catch (NoSuchMethodException ex) {
+                Exceptions.printStackTrace(ex);
+            }
+        }
+        try {
+            properties.add(LayoutProperty.createProperty(
+                    this, Boolean.class,
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.polar.name"),
+                    TREE_LAYOUT,
+                    "TreeLayout.polar.name",
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.polar.desc"),
+                    "getIsPolar", "setIsPolar"));
+        } catch (Exception e) {
+            //Exceptions.printStackTrace(e);
+            System.out.println("couldn't find translation, using default branding");
+            try {
+                properties.add(LayoutProperty.createProperty(
+                        this, Boolean.class,
+                        "Polar projection",
+                        TREE_LAYOUT,
+                        "TreeLayout.polar.name",
+                        "Project the tree over a circle?",
+                        "getIsPolar", "setIsPolar"));
+            } catch (NoSuchMethodException ex) {
+                Exceptions.printStackTrace(ex);
+            }
+        }
+
+        try {
+            properties.add(LayoutProperty.createProperty(
+                    this, Double.class,
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.radius.name"),
+                    TREE_LAYOUT,
+                    "TreeLayout.radius.name",
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.radius.desc"),
+                    "getRadius", "setRadius"));
+        } catch (Exception e) {
+            //Exceptions.printStackTrace(e);
+            System.out.println("couldn't find translation, using default branding");
+            try {
+                properties.add(LayoutProperty.createProperty(
+                        this, Double.class,
+                        "Radius",
+                        TREE_LAYOUT,
+                        "TreeLayout.radius.name",
+                        "Circle radius",
+                        "getRadius", "setRadius"));
+            } catch (NoSuchMethodException ex) {
+                Exceptions.printStackTrace(ex);
+            }
+        }
+
+
 
         return properties.toArray(new LayoutProperty[0]);
     }
@@ -522,5 +627,45 @@ public class TreeLayout extends AbstractLayout implements Layout {
 
     public void setRoot(Integer rootId) {
         this.rootId = rootId;
+    }
+
+    public Boolean getIsPolar() {
+        return this.isPolar;
+    }
+
+    public void setIsPolar(Boolean isPolar) {
+        this.isPolar = isPolar;
+    }
+
+    public Double getRadius() {
+        return this.radius;
+    }
+
+    public void setRadius(Double radius) {
+        this.radius = radius;
+    }
+
+    public Double getWidth() {
+        return this.width;
+    }
+
+    public void setWidth(Double width) {
+        this.width = width;
+    }
+
+    public Double getHeight() {
+        return this.height;
+    }
+
+    public void setHeight(Double height) {
+        this.height = height;
+    }
+
+    public Boolean getAutoResize() {
+        return this.autoResize;
+    }
+
+    public void setAutoResize(Boolean autoResize) {
+        this.autoResize = autoResize;
     }
 }

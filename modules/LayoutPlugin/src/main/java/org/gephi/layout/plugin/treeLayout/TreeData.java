@@ -10,7 +10,7 @@ import org.gephi.graph.spi.LayoutData;
  * Time: 4:43 PM
  * To change this template use File | Settings | File Templates.
  */
-public class HierarchicalTreeNodeLayoutData implements LayoutData {
+public class TreeData implements LayoutData {
     //Data
     public float x = 0;
     public float y = 0;
