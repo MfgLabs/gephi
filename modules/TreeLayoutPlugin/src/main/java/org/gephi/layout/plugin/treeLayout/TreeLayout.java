@@ -62,7 +62,6 @@ import org.gephi.graph.api.EdgeIterable;
 import org.gephi.graph.api.Graph;
 import org.gephi.graph.api.GraphController;
 import org.gephi.graph.api.GraphModel;
-import org.gephi.graph.api.HierarchicalGraph;
 import org.gephi.graph.api.Node;
 import org.gephi.graph.api.NodeData;
 import org.gephi.graph.api.NodeIterable;
@@ -77,8 +76,7 @@ import org.openide.util.NbBundle;
  * Algorithm's paper: "Improving Walker's Algorithm to Run in Linear Time" by C.
  * Buchheim, M. Jünger, S. Leipert
  *
- * Gephi implementation:
- *
+ * Gephi implementation by
  * @author Juilan Bilcke
  */
 public class TreeLayout extends AbstractTreeLayout {
@@ -88,8 +86,9 @@ public class TreeLayout extends AbstractTreeLayout {
     private float maxx = 0.0f;
     private float miny = 0.0f;
     private float maxy = 0.0f;
+    private int levels = 0;
+        
     //Properties
-    private Integer rootId = 1;
     private Double width = 30.0;
     private Double height = 400.0;
     private Boolean isPolar = false;
@@ -98,10 +97,8 @@ public class TreeLayout extends AbstractTreeLayout {
     private Boolean createDepthAttribute = false;
     private Boolean continuous = false;
     private Double spacingCoefficient = 5.0;
-    // current state
 
-    // computed stats
-    private int levels = 0;
+
     
     private Comparator<Node> nodeComparator = new Comparator<Node>() {
         @Override
@@ -110,15 +107,26 @@ public class TreeLayout extends AbstractTreeLayout {
         }
     };
 
-
     public TreeLayout(LayoutBuilder layoutBuilder) {
         super(layoutBuilder);
     }
 
+    @Override
     public void resetPropertiesValues() {
-        rootId = 1;
+        width = 30.0;
+        height = 400.0;
+        isPolar = false;
+        radius = 20.0;
+        autoResize = true;
+        createDepthAttribute = false;
+        continuous = false;
+        spacingCoefficient = 5.0;
+        // current state
+        // computed stats
+        levels = 0;
     }
 
+    @Override
     public void initAlgo() {
         this.converged = false;
     }
@@ -136,6 +144,7 @@ public class TreeLayout extends AbstractTreeLayout {
         return max;
     }
 
+    @Override
     public void goAlgo() {
 
         GraphController graphController = Lookup.getDefault().lookup(GraphController.class);
@@ -170,7 +179,7 @@ public class TreeLayout extends AbstractTreeLayout {
         Node[] nodes = graph.getNodes().toArray(); // so .length etc.. can work
         for (Node n : nodes) {
             getLayoutData(n);
-            if (n.getId() == rootId) {
+            if (graph.getInDegree(n) == 0) {
                 root = n;
             }
         }
@@ -206,7 +215,7 @@ public class TreeLayout extends AbstractTreeLayout {
             TreeData d = n.getNodeData().getLayoutData();
             if (!isPolar) {
                 // minir adjustment for the root
-                if (n.getId() == rootId) {
+                if (n.getId() == root.getId()) {
                     double x = minx + (Math.abs(maxx - minx) * 0.5);
                     System.out.println("" + x + " = (" + maxx + " - " + minx + ") * 0.5 = (" + (maxx - minx) + ") * 0.5");
                 }
@@ -224,7 +233,6 @@ public class TreeLayout extends AbstractTreeLayout {
             converged = true;
         }
     }
-
 
     private void firstWalk(Node v, int num) {
         TreeData vp = getLayoutData(v);
@@ -320,13 +328,13 @@ public class TreeLayout extends AbstractTreeLayout {
     private Node getNextLeft(Node v) {
         Node leftMostChild = getLeftMost(v);
         Node res = (leftMostChild != null) ? leftMostChild : getLayoutData(v).thread;
-        return (res.getId() == rootId) ? null : res;
+        return (res.getId() == root.getId()) ? null : res;
     }
 
     private Node getNextRight(Node v) {
         Node rightMostChild = getRightMost(v);
         Node res = (rightMostChild != null) ? rightMostChild : getLayoutData(v).thread;
-        return (res.getId() == rootId) ? null : res;
+        return (res.getId() == root.getId()) ? null : res;
     }
 
     private void moveSubtree(Node wm, Node wp, float shift) {
@@ -452,13 +460,6 @@ public class TreeLayout extends AbstractTreeLayout {
 
         try {
             properties.add(LayoutProperty.createProperty(
-                    this, Integer.class,
-                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.root.name"),
-                    TREE_LAYOUT,
-                    "TreeLayout.root.name",
-                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.root.desc"),
-                    "getRootId", "setRootId"));
-            properties.add(LayoutProperty.createProperty(
                     this, Double.class,
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.spacing.name"),
                     TREE_LAYOUT,
@@ -546,6 +547,7 @@ public class TreeLayout extends AbstractTreeLayout {
                         "TreeLayout.radius.name",
                         "Circle radius",
                         "getRadius", "setRadius"));
+                /*
                 properties.add(LayoutProperty.createProperty(
                         this, Boolean.class,
                         "Continuous",
@@ -553,21 +555,14 @@ public class TreeLayout extends AbstractTreeLayout {
                         "TreeLayout.continuous.name",
                         "Continuous mode (realtime update)",
                         "getContinuous", "setContinuous"));
+                        * */
             } catch (NoSuchMethodException ex) {
                 Exceptions.printStackTrace(ex);
             }
         }
-       
+
 
         return properties.toArray(new LayoutProperty[0]);
-    }
-
-    public Integer getRootId() {
-        return rootId;
-    }
-
-    public void setRootId(Integer rootId) {
-        this.rootId = rootId;
     }
 
     public Boolean getIsPolar() {
