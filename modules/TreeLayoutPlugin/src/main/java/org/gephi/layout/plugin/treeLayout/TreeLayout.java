@@ -89,13 +89,14 @@ public class TreeLayout extends AbstractTreeLayout {
     private int levels = 0;
         
     //Properties
-    private Double width = 30.0;
+    private Double width = 15.0;
     private Double height = 400.0;
     private Boolean isPolar = false;
-    private Double radius = 20.0;
+    private Double radius = 1000.0;
     private Boolean autoResize = true;
     private Boolean createDepthAttribute = false;
     private Boolean continuous = false;
+    private Double pow = 0.7;
     private Double spacingCoefficient = 5.0;
 
 
@@ -110,19 +111,21 @@ public class TreeLayout extends AbstractTreeLayout {
     public TreeLayout(LayoutBuilder layoutBuilder) {
         super(layoutBuilder);
     }
+    
 
     @Override
     public void resetPropertiesValues() {
-        width = 30.0;
+        width = 15.0;
         height = 400.0;
         isPolar = false;
-        radius = 20.0;
+        radius = 1000.0;
         autoResize = true;
         createDepthAttribute = false;
         continuous = false;
         spacingCoefficient = 5.0;
         // current state
         // computed stats
+        pow = 0.7;
         levels = 0;
     }
 
@@ -224,7 +227,8 @@ public class TreeLayout extends AbstractTreeLayout {
 
             } else {
                 double angle = Math.toRadians(360 * DataUtils.normalize(d.x, minx, maxx));
-                double r = (this.radius * ((this.autoResize) ? nodes.length : 1.0)) * DataUtils.normalize(d.y, miny, maxy);
+                
+                double r = this.radius * Math.pow(d.y,pow);
                 n.getNodeData().setX(new Float(r * Math.cos(angle)));
                 n.getNodeData().setY(new Float(r * Math.sin(angle)));
             }
@@ -494,71 +498,28 @@ public class TreeLayout extends AbstractTreeLayout {
                     "TreeLayout.radius.name",
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.radius.desc"),
                     "getRadius", "setRadius"));
-            properties.add(LayoutProperty.createProperty(
+           properties.add(LayoutProperty.createProperty(
+                    this, Double.class,
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.pow.name"),
+                    TREE_LAYOUT,
+                    "TreeLayout.pow.name",
+                    NbBundle.getMessage(TreeLayout.class, "TreeLayout.pow.desc"),
+                    "getPow", "setPow"));
+            
+           /*
+           properties.add(LayoutProperty.createProperty(
                     this, Boolean.class,
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.continuous.name"),
                     TREE_LAYOUT,
                     "TreeLayout.continuous.name",
                     NbBundle.getMessage(TreeLayout.class, "TreeLayout.continuous.desc"),
-                    "getContinuous", "setContinuous"));
+                    "getContinuous", "setContinuous"));*/
         } catch (Exception e) {
-            //Exceptions.printStackTrace(e);
-            //System.out.println("couldn't find translation, using default branding");
-            try {
-                properties.add(LayoutProperty.createProperty(
-                        this, Integer.class,
-                        "Root id",
-                        TREE_LAYOUT,
-                        "TreeLayout.root.name",
-                        "Root node id",
-                        "getRootId", "setRootId"));
-                properties.add(LayoutProperty.createProperty(
-                        this, Double.class,
-                        "Spacing coefficient",
-                        TREE_LAYOUT,
-                        "TreeLayout.spacing.name",
-                        "Spacing coefficient",
-                        "getSpacingCoefficient", "setSpacingCoefficient"));
-                properties.add(LayoutProperty.createProperty(
-                        this, Double.class,
-                        "Tree width",
-                        TREE_LAYOUT,
-                        "TreeLayout.width.name",
-                        "Tree width",
-                        "getWidth", "setWidth"));
-                properties.add(LayoutProperty.createProperty(
-                        this, Double.class,
-                        "Tree height",
-                        TREE_LAYOUT,
-                        "TreeLayout.height.name",
-                        "Tree height",
-                        "getHeight", "setHeight"));
-                properties.add(LayoutProperty.createProperty(
-                        this, Boolean.class,
-                        "Polar projection",
-                        TREE_LAYOUT,
-                        "TreeLayout.polar.name",
-                        "Project the tree over a circle?",
-                        "getIsPolar", "setIsPolar"));
-                properties.add(LayoutProperty.createProperty(
-                        this, Double.class,
-                        "Radius",
-                        TREE_LAYOUT,
-                        "TreeLayout.radius.name",
-                        "Circle radius",
-                        "getRadius", "setRadius"));
-                /*
-                properties.add(LayoutProperty.createProperty(
-                        this, Boolean.class,
-                        "Continuous",
-                        TREE_LAYOUT,
-                        "TreeLayout.continuous.name",
-                        "Continuous mode (realtime update)",
-                        "getContinuous", "setContinuous"));
-                        * */
-            } catch (NoSuchMethodException ex) {
-                Exceptions.printStackTrace(ex);
-            }
+            Exceptions.printStackTrace(e);
+            System.out.println("couldn't find translation, using default branding");
+            //} catch (NoSuchMethodException ex) {
+            //    Exceptions.printStackTrace(ex);
+            //}
         }
 
 
@@ -579,6 +540,14 @@ public class TreeLayout extends AbstractTreeLayout {
 
     public void setRadius(Double radius) {
         this.radius = radius;
+    }
+
+    public Double getPow() {
+        return this.pow;
+    }
+
+    public void setPow(Double pow) {
+        this.pow = pow;
     }
 
     public Double getWidth() {
